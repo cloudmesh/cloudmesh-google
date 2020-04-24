@@ -40,7 +40,8 @@ class Provider(ComputeNodeABC):
                     image_project: ubuntu-os-cloud
                     project_name: cloudmesh
                     storage_bucket: cloudmesh-bucket
-                    zone: us-west3-a
+                    zone: us-centarl-1
+                    region: us-central1
                     flavor: g1-small
                     size: 10
                     resource_group: cloudmesh-group
@@ -154,6 +155,17 @@ class Provider(ComputeNodeABC):
                        "Value"
                        ]
         },
+        "ip": {
+            "sort_keys": ["id"],
+            "order": ["name",
+                      'address',
+                      'status',
+                      'addressType'],
+            "header": ["Name",
+                       'Address',
+                       'Status',
+                       'AddressType']
+        },
         "key": {
             "sort_keys": ["name"],
             "order": ["name",
@@ -172,6 +184,7 @@ class Provider(ComputeNodeABC):
         "secgroup": {},  # we need this for printing tables
         "secrule": {},  # we need this for printing tables
     }
+
 
     @staticmethod
     def get_kind():
@@ -436,7 +449,7 @@ class Provider(ComputeNodeABC):
                 entry['cm'] = {}
 
             if kind == 'ip':
-                entry['name'] = entry['floating_ip_address']
+                entry['name'] = entry['name']
 
             entry["cm"].update({
                 "kind": kind,
@@ -1564,7 +1577,7 @@ class Provider(ComputeNodeABC):
             flavor_response = compute_service.machineTypes().list(project=project_id, zone=zone).execute()
             # Extract the items.
             source_disk_flavor = flavor_response['items']
-            # print('flavors 2')
+
         except Exception as e:
             print(f'Error in get_flavors {e}')
         source_disk_flavor = self.update_dict(source_disk_flavor, kind='flavor')
@@ -1580,6 +1593,9 @@ class Provider(ComputeNodeABC):
         """
         raise NotImplementedError
 
+    # -------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------
     def attach_public_ip(self, name=None, ip=None):
         """
         adds a public ip to the named vm
@@ -1607,7 +1623,30 @@ class Provider(ComputeNodeABC):
         :param ip: the ip address, if None than all will be deleted
         :return:
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project = self.auth_config['project_id']
+
+        # Name of the region for this request.
+        region = self.default_config['region']
+        banner(ip)
+        # Name of the address resource to delete.
+        ipList = self.list_public_ips()
+        address = None
+        for item in ipList:
+            if item['address'] == ip:
+                address = item['name']
+                pprint(item)
+                break
+        if not address:
+            raise ValueError('ip address not found')
+        # address = 'ipaddress1'  # TODO: Update placeholder value.
+
+        request = comput_servce.addresses().delete(project=project, region=region, address=address)
+        response = request.execute()
+
+        # TODO: Change code below to process the `response` dict:
+        pprint(response)
+        return self.update_dict(response, kind="ip")
 
     def list_public_ips(self, available=False):
         """
@@ -1618,7 +1657,25 @@ class Provider(ComputeNodeABC):
 
         :return:
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project = self.auth_config['project_id']
+
+        filter="status!=IN_USE"
+        region = self.default_config['region']
+
+        request = comput_servce.addresses().list(project=project, region=region, filter = filter)
+        output = []
+        while request is not None:
+            response = request.execute()
+
+            for address in response['items']:
+                # TODO: Change code below to process each `address` resource:
+                #pprint(address)
+                output.append(address)
+
+            request = comput_servce.addresses().list_next(previous_request=request, previous_response=response)
+
+        return self.update_dict(output, kind="ip")
 
     def create_public_ip(self):
         """
@@ -1626,7 +1683,24 @@ class Provider(ComputeNodeABC):
 
         :return: The ip address information
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project = self.auth_config['project_id']
+
+        # name = rstr.xeger(r'(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)')
+        address_body = {
+            "name": 'yasir-1',
+            "description": "cloudmesh ip creation",
+        }
+
+        region = self.default_config['region']
+
+        request = comput_servce.addresses().insert(project=project, region=region, body=address_body)
+        response = request.execute()
+
+        # TODO: Change code below to process the `response` dict:
+        pprint(response)
+
+        return self.update_dict(response, kind="ip")
 
     def find_available_public_ip(self):
         """
@@ -1643,8 +1717,14 @@ class Provider(ComputeNodeABC):
         :param name: name of the server
         :return:
         """
+        comput_servce = self._get_compute_service()
+        project_id = self.auth_config['project_id']
+        pprint("here")
         raise NotImplementedError
 
+    # -------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------
     def list_secgroups(self, name=None):
         """
         List the named security group
@@ -1711,7 +1791,8 @@ class Provider(ComputeNodeABC):
         return ""
 
     def log(self, vm=None):
-        raise NotImplementedError
+
+
         return ""
 
     def ssh(self, vm=None, command=None):
