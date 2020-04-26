@@ -1593,9 +1593,6 @@ class Provider(ComputeNodeABC):
         """
         raise NotImplementedError
 
-    # -------------------------------------------------------------------------------------------
-    # -------------------------------------------------------------------------------------------
-    # -------------------------------------------------------------------------------------------
     def attach_public_ip(self, name=None, ip=None):
         """
         adds a public ip to the named vm
@@ -1625,27 +1622,21 @@ class Provider(ComputeNodeABC):
         """
         comput_servce = self._get_compute_service()
         project = self.auth_config['project_id']
-
-        # Name of the region for this request.
         region = self.default_config['region']
-        banner(ip)
+
         # Name of the address resource to delete.
         ipList = self.list_public_ips()
         address = None
         for item in ipList:
             if item['address'] == ip:
                 address = item['name']
-                pprint(item)
                 break
         if not address:
             raise ValueError('ip address not found')
-        # address = 'ipaddress1'  # TODO: Update placeholder value.
 
         request = comput_servce.addresses().delete(project=project, region=region, address=address)
         response = request.execute()
 
-        # TODO: Change code below to process the `response` dict:
-        pprint(response)
         return self.update_dict(response, kind="ip")
 
     def list_public_ips(self, available=False):
@@ -1659,18 +1650,15 @@ class Provider(ComputeNodeABC):
         """
         comput_servce = self._get_compute_service()
         project = self.auth_config['project_id']
-
-        filter="status!=IN_USE"
         region = self.default_config['region']
+        filter = "status!=IN_USE"
 
-        request = comput_servce.addresses().list(project=project, region=region, filter = filter)
+        request = comput_servce.addresses().list(project=project, region=region, filter=filter)
         output = []
         while request is not None:
             response = request.execute()
 
             for address in response['items']:
-                # TODO: Change code below to process each `address` resource:
-                #pprint(address)
                 output.append(address)
 
             request = comput_servce.addresses().list_next(previous_request=request, previous_response=response)
@@ -1688,7 +1676,7 @@ class Provider(ComputeNodeABC):
 
         # name = rstr.xeger(r'(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)')
         address_body = {
-            "name": 'yasir-1',
+            "name": 'ip10',
             "description": "cloudmesh ip creation",
         }
 
@@ -1697,7 +1685,6 @@ class Provider(ComputeNodeABC):
         request = comput_servce.addresses().insert(project=project, region=region, body=address_body)
         response = request.execute()
 
-        # TODO: Change code below to process the `response` dict:
         pprint(response)
 
         return self.update_dict(response, kind="ip")
@@ -1717,14 +1704,9 @@ class Provider(ComputeNodeABC):
         :param name: name of the server
         :return:
         """
-        comput_servce = self._get_compute_service()
-        project_id = self.auth_config['project_id']
-        pprint("here")
         raise NotImplementedError
 
-    # -------------------------------------------------------------------------------------------
-    # -------------------------------------------------------------------------------------------
-    # -------------------------------------------------------------------------------------------
+
     def list_secgroups(self, name=None):
         """
         List the named security group
