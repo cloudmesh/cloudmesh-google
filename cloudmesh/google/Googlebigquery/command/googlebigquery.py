@@ -11,12 +11,12 @@ from cloudmesh.common.debug import VERBOSE
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
+
 class GooglebigqueryCommand(PluginCommand):
 
     def get_options(self):
         args = docopt(__doc__)
         print(args)
-
 
     # noinspection PyUnusedLocal
     @command
@@ -66,15 +66,15 @@ class GooglebigqueryCommand(PluginCommand):
             List all jobs present in given project_id
         """
 
-        #map_parameters(arguments, 'create', 'list', 'listtables', 'loadtable', 'exporttable', 'runquery','listjobs')
+        # map_parameters(arguments, 'create', 'list', 'listtables', 'loadtable', 'exporttable', 'runquery','listjobs')
 
         googlebigquery = Provider()
         print(arguments)
 
         if arguments.loadtable:
-            #googlebigquery loadtable SOURCE PROJECT_ID DATASET_ID [TABLE_ID]
+            # googlebigquery loadtable SOURCE PROJECT_ID DATASET_ID [TABLE_ID]
             source_id = arguments.get('SOURCE_ID')
-            #project_id = arguments.get('PROJECT_ID')
+            # project_id = arguments.get('PROJECT_ID')
             dataset_id = arguments.get('DATASET_ID')
             table_id = arguments.get('TABLE_ID')
             print(source_id)
@@ -103,12 +103,12 @@ class GooglebigqueryCommand(PluginCommand):
                     return "Unhandled error"
         elif arguments.list:
             # googlebigquery list project_id
-            #source_id = arguments.get('SOURCE')
+            # source_id = arguments.get('SOURCE')
             project_id = arguments.get('PROJECT_ID')
-            #dataset_id = arguments.get('DATASET_ID')
-            #table_id = arguments.get('TABLE_ID')
-            #result = googlebigquery.listdatasets()
-            #print(result)
+            # dataset_id = arguments.get('DATASET_ID')
+            # table_id = arguments.get('TABLE_ID')
+            # result = googlebigquery.listdatasets()
+            # print(result)
             try:
                 result = googlebigquery.listdatasets()
                 print(result)
@@ -116,12 +116,12 @@ class GooglebigqueryCommand(PluginCommand):
                 return "Unhandled error"
         elif arguments.listtables:
             # googlebigquery list project_id
-            #source_id = arguments.get('SOURCE')
-            #project_id = arguments.get('PROJECT_ID')
+            # source_id = arguments.get('SOURCE')
+            # project_id = arguments.get('PROJECT_ID')
             dataset_id = arguments.get('DATASET_ID')
-            #table_id = arguments.get('TABLE_ID')
-            #result = googlebigquery.listtables(dataset_id)
-            #print(result)
+            # table_id = arguments.get('TABLE_ID')
+            # result = googlebigquery.listtables(dataset_id)
+            # print(result)
             try:
                 result = googlebigquery.listtables(dataset_id)
                 print(result)
@@ -129,12 +129,12 @@ class GooglebigqueryCommand(PluginCommand):
                 return "Unhandled error"
         elif arguments.describetable:
             # googlebigquery list project_id
-            #source_id = arguments.get('SOURCE')
-            #project_id = arguments.get('PROJECT_ID')
+            # source_id = arguments.get('SOURCE')
+            # project_id = arguments.get('PROJECT_ID')
             dataset_id = arguments.get('DATASET_ID')
             table_id = arguments.get('TABLE_ID')
-            #result = googlebigquery.describetable(dataset_id, table_id)
-            #print(result)
+            # result = googlebigquery.describetable(dataset_id, table_id)
+            # print(result)
             try:
                 result = googlebigquery.describetable(dataset_id, table_id)
                 print(result)
@@ -142,6 +142,7 @@ class GooglebigqueryCommand(PluginCommand):
                 return "Unhandled error"
         else:
             print(self.get_options())
+
 
 if __name__ == "__main__":
     print("In googlebigquery.py")
