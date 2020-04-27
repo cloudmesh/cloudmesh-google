@@ -3,18 +3,21 @@ import os
 import subprocess
 import time
 import uuid
+from time import sleep
 from pprint import pprint
-from sys import platform
 
 import yaml
 from cloudmesh.abstract.ComputeNodeABC import ComputeNodeABC
 from cloudmesh.common.DateTime import DateTime
+from cloudmesh.common.Printer import Printer
 from cloudmesh.common.console import Console
 from cloudmesh.common.debug import VERBOSE
 from cloudmesh.common.util import banner
 from cloudmesh.common.util import path_expand
 from cloudmesh.configuration.Config import Config
+from cloudmesh.management.configuration.SSHkey import SSHkey
 from cloudmesh.mongo.CmDatabase import CmDatabase
+from cloudmesh.secgroup.Secgroup import Secgroup, SecgroupRule
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -41,6 +44,7 @@ class Provider(ComputeNodeABC):
                     project_name: cloudmesh
                     storage_bucket: cloudmesh-bucket
                     zone: us-west3-a
+                    region: us-west3
                     flavor: g1-small
                     size: 10
                     resource_group: cloudmesh-group
@@ -133,38 +137,64 @@ class Provider(ComputeNodeABC):
         },
         "flavor": {
             "sort_keys": ["cm.name",
-                          "number_of_cores",
-                          "os_disk_size_in_mb"],
+                          "guestCpus",
+                          "memoryMb"],
             "order": ["cm.name",
-                      "number_of_cores",
-                      "os_disk_size_in_mb",
-                      "resource_disk_size_in_mb",
-                      "memory_in_mb",
-                      "max_data_disk_count"],
+                      "guestCpus",
+                      "imageSpaceGb",
+                      "memoryMb",
+                      "maximumPersistentDisks"],
             "header": ["Name",
                        "NumberOfCores",
                        "OS_Disk_Size",
-                       "Resource_Disk_Size",
                        "Memory",
                        "Max_Data_Disk"]},
-        # "status": {},
+        "metadata": {
+            "sort_keys": ["key"],
+            "order": ["key",
+                      "value"
+                      ],
+            "header": ["Key",
+                       "Value"
+                       ]
+        },
         "key": {
             "sort_keys": ["name"],
             "order": ["name",
-                      "user",
                       "type",
-                      "format",
                       "fingerprint",
-                      "comment"],
+                      "comment",
+                      "group"
+                      ],
             "header": ["Name",
-                       "User",
                        "Type",
-                       "Format",
                        "Fingerprint",
-                       "Comment"]
-        },  # we need this for printing tables
-        "secgroup": {},  # we need this for printing tables
-        "secrule": {},  # we need this for printing tables
+                       "Comment",
+                       "Group"
+                       ]
+        },
+        "secrule": {
+            "sort_keys": ["name"],
+            "order": ["name",
+                      "protocol",
+                      "ports",
+                      "sourceRanges",
+                      "targetTags"],
+            "header": ["Name",
+                       "Protocol",
+                       "Ports",
+                       "IP Range",
+                       "Target Tags"]
+        },
+        "secgroup": {
+            "sort_keys": ["name"],
+            "order": ["name",
+                      "rules",
+                      "description"],
+            "header": ["Name",
+                       "Rules",
+                       "Description"]
+        }
     }
 
     @staticmethod
@@ -172,10 +202,9 @@ class Provider(ComputeNodeABC):
         kind = ["google"]
         return kind
 
-    def __init__(self, name, configuration):
+    def __init__(self, name):
         cloud = name
-        path = configuration
-        config = Config(config_path=path)["cloudmesh"]
+        config = Config()["cloudmesh"]
 
         if not cloud in config["cloud"]:
             Console.error('Google compute configuration missing. Please register.')
@@ -200,9 +229,28 @@ class Provider(ComputeNodeABC):
                     f"The credential for Oracle cloud is incomplete. {field} "
                     "must not be TBD")
 
-    def _get_credentials(self, client_secret_file, scopes):
+        # noinspection PyPep8Naming
+
+    def Print(self, data, output, kind):
+
+        if output == "table":
+
+            order = self.output[kind]['order']
+            header = self.output[kind]['header']
+
+            print(Printer.flatwrite(data,
+                                    sort_keys=["name"],
+                                    order=order,
+                                    header=header,
+                                    output=output)
+                  )
+        else:
+            print(Printer.write(data, output=output))
+
+    def get_credentials(self, client_secret_file, scopes):
         """
         Method to get the credentials using the Service Account JSON file.
+
         :param client_secret_file: Service Account JSON File path.
         :param scopes: Scopes needed to provision.
         :return:
@@ -222,10 +270,10 @@ class Provider(ComputeNodeABC):
 
     def _get_service(self, service_type=None, version='v1', scopes=None):
         """
-            Method to get service.
+        Method to get service.
         """
 
-        service_account_credentials = self._get_credentials(
+        service_account_credentials = self.get_credentials(
             self.auth_config['json_file'],
             scopes)
 
@@ -243,7 +291,7 @@ class Provider(ComputeNodeABC):
 
     def _get_compute_service(self):
         """
-            Method to get compute service.
+        Method to get compute service.
         """
         service_type = self.cm_config["service"]
         service_version = self.cm_config["version"]
@@ -257,7 +305,7 @@ class Provider(ComputeNodeABC):
 
     def _get_iam_service(self):
         """
-            Method to get compute service.
+        Method to get compute service.
         """
         service_type = 'iam'
         service_version = self.cm_config["version"]
@@ -270,7 +318,6 @@ class Provider(ComputeNodeABC):
         return iam_service
 
     def _key_dict(self, response):
-
         project_id = response["name"]
         commonInstanceMetadata = response["commonInstanceMetadata"]
         items = commonInstanceMetadata.get('items', [])
@@ -283,30 +330,35 @@ class Provider(ComputeNodeABC):
             key = item['key']
             if (key == 'ssh-keys'):
                 value = item['value']
+
                 for line in value.splitlines():
                     key_dict = {}
 
-                    if line is None or line == '':
+                    if line is None or line.strip() == '':
                         # if line is empty, then dont process.
                         continue
-                    key_items = line.split()
-                    name_items = key_items[0].split(":")
-                    key_dict["user"] = name_items[0]
-                    key_dict["format"] = name_items[1]
 
-                    key_dict["type"] = name_items[1].split("-")[0]
+                    key_items = line.split()
+
+                    name_items = key_items[0].split(":")
+                    key_dict["name"] = name_items[0]
+                    key_dict["type"] = name_items[1]
+
                     key_dict["key"] = key_items[1]
+
+                    key_dict["comment"] = key_items[2]
 
                     # Join format and key.
                     key_dict[
-                        "public_key"] = f"{key_dict['format']} {key_dict['key']}"
-                    key_dict["comment"] = key_items[2]
-                    key_dict[
-                        "name"] = f"{key_dict['user']}:{key_dict['type']}:{key_dict['comment']}"
+                        "public_key"] = f"{key_dict['type']} {key_dict['key']} {key_dict['comment']}"
+
                     key_dict["private_key"] = None
 
-                    fingerPrint = str(uuid.uuid1())
+                    fingerPrint = SSHkey._fingerprint(key_dict["public_key"])
+
                     key_dict["fingerprint"] = fingerPrint
+
+                    key_dict["group"] = self.kind
 
                     if (len(key_items) > 3):
                         user_item = json.loads(key_items[3])
@@ -344,7 +396,8 @@ class Provider(ComputeNodeABC):
 
     def _process_instance(self, instance):
         """
-        Method to convert the instance json to dict.
+        converts the instance json to dict.
+
         :param instance: JSON with instance details
         :return:
         """
@@ -375,10 +428,15 @@ class Provider(ComputeNodeABC):
         instance_dict["mode"] = disk["mode"]
         instance_dict["modified"] = str(DateTime.now())
 
+        #Metadata
+        instance_metadata = instance.get("metadata", {})
+        instance_dict["metadata"] = instance_metadata.get('items', [])
+
+        #firewall tags.
+        instance_dict["tags"] = instance["tags"]
+
         # Network access.
         network_config = instance["networkInterfaces"]
-
-        instance_dict["metadata"] = instance.get("metadata", [])
 
         if (network_config):
             network_config = network_config[0]
@@ -389,7 +447,7 @@ class Provider(ComputeNodeABC):
             if "natIP" in access_config:
                 external_ip = access_config["natIP"]
             else:
-                external_ip = "Not Defined"
+                external_ip = None
 
             instance_dict["ip_public"] = external_ip
 
@@ -397,8 +455,7 @@ class Provider(ComputeNodeABC):
 
     def update_dict(self, elements, kind=None):
         """
-        This function adds a cloudmesh cm dict to each dict in the list
-        elements.
+        adds a cloudmesh cm dict to each dict in the list elements.
 
         returns an object or list of objects With the dict method
         this object is converted to a dict. Typically this method is used
@@ -474,7 +531,8 @@ class Provider(ComputeNodeABC):
 
     def _format_aggregate_list(self, instance_list):
         """
-        Method to format the instance list to flat dict format.
+        formats the instance list to flat dict format.
+
         :param instance_list:
         :return: dict
         """
@@ -492,7 +550,8 @@ class Provider(ComputeNodeABC):
 
     def _format_zone_list(self, instance_list):
         """
-        Method to format the instance list to flat dict format.
+        formats the instance list to flat dict format.
+
         :param instance_list:
         :return: dict
         """
@@ -524,11 +583,11 @@ class Provider(ComputeNodeABC):
                         zone=zone,
                         operation=operation_name).execute()
 
+                if 'error' in result or 'httpErrorMessage' in result:
+                    Console.error("Error in operation")
+                    raise Exception(result['error']['errors'])
+
                 if result['status'] == 'DONE':
-                    if 'error' in result:
-                        Console.error("Error in operation")
-                        raise Exception(result['error'])
-                    else:
                         break
 
                 time.sleep(1)
@@ -582,7 +641,7 @@ class Provider(ComputeNodeABC):
                 Console.error(f'Unable to start instance {name}.')
         else:
             # Get the instance details to update DB.
-            result = self.__info(name, displayType="vm")
+            result = self._info(name, displayType="vm")
 
         return result
 
@@ -615,10 +674,9 @@ class Provider(ComputeNodeABC):
                                      name)
 
             # Get the instance details to update DB.
-            result = self.__info(name, displayType="vm")
+            result = self._info(name, displayType="vm")
 
         except Exception as se:
-            print(se)
             if type(se) == HttpError:
                 Console.error(
                     f'Unable to stop instance {name}. Reason: {se._get_reason()}')
@@ -627,7 +685,7 @@ class Provider(ComputeNodeABC):
 
         return result
 
-    def __info(self, name, displayType, compute_service=None, **kwargs):
+    def _raw_instance_info(self, name, compute_service=None, **kwargs):
         """
         gets the information of a node with a given name
 
@@ -641,9 +699,6 @@ class Provider(ComputeNodeABC):
         project_id = kwargs.get('project_id', self.auth_config["project_id"])
         zone = kwargs.get('zone', self.default_config["zone"])
 
-        if displayType == None:
-            displayType = "vm"
-
         if compute_service is None:
             compute_service = self._get_compute_service()
 
@@ -652,6 +707,22 @@ class Provider(ComputeNodeABC):
                                                  zone=zone,
                                                  instance=name).execute()
 
+        return result
+
+    def _info(self, name, displayType, compute_service=None, **kwargs):
+        """
+        gets the information of a node with a given name
+
+        :param name:
+        :param displayType:
+        :return:
+        """
+
+        result = self._raw_instance_info(name, compute_service)
+
+        if displayType == None:
+            displayType = "vm"
+
         if displayType == 'status':
             result = self._process_status(result)
         elif displayType == "vm":
@@ -659,7 +730,6 @@ class Provider(ComputeNodeABC):
 
         result = self.update_dict(result, kind=displayType)
 
-        VERBOSE(result)
         return result
 
     def info(self, name=None, **kwargs):
@@ -678,9 +748,8 @@ class Provider(ComputeNodeABC):
         display_kind = kwargs.get('kind', "vm")
 
         try:
-            result = self.__info(name, displayType=display_kind, **kwargs)
+            result = self._info(name, displayType=display_kind, **kwargs)
         except Exception as se:
-            print(se)
             if type(se) == HttpError:
                 Console.error(
                     f'Unable to get instance {name} info. Reason: {se._get_reason()}')
@@ -761,7 +830,8 @@ class Provider(ComputeNodeABC):
 
     def destroy(self, name=None, **kwargs):
         """
-        Destroys the node
+        destroys the node
+
         :param name: the name of the node
         :return: the dict of the node
         """
@@ -796,7 +866,6 @@ class Provider(ComputeNodeABC):
             Console.ok(f"{name} deleted successfully.")
 
         except Exception as se:
-            VERBOSE(se)
             if type(se) == HttpError:
                 Console.error(
                     f'Unable to delete instance {name}. Reason: {se._get_reason()}')
@@ -808,75 +877,115 @@ class Provider(ComputeNodeABC):
 
         return vm
 
-    def _get_compute_config(self, vm_name, machine_type, disk_image, image_caption,
-                            image_url, storage_bucket, startup_script,
-                            diskSize):
+    def _get_compute_config(self, vm_name, project_id, zone, machine_type,
+                            disk_image, storage_bucket, startup_script,
+                            diskSize, secgroup):
+
+        project_zone = f"projects/{project_id}/zones/{zone}"
+
+        secrules = []
+
+        if secgroup:
+            # Get required sec group.
+            grp = self._list_local_secgroups(secgroup)
+            if grp:
+                for rule in grp[0]['rules']:
+                    secrules.append(f'cm-{secgroup}-{rule}')
 
         compute_config = {
-            'name': vm_name,
-            'machineType': machine_type,
-
-            # Specify the boot disk and the image to use as a source.
-            'disks': [
-                {
-                    'boot': True,
-                    'autoDelete': True,
-                    'initializeParams': {
-                        'sourceImage': disk_image,
+            "kind": "compute#instance",
+            "name": vm_name,
+            "zone": project_zone,
+            "machineType": f"{project_zone}/machineTypes/{machine_type}",
+            "displayDevice": {
+                "enableDisplay": False
+            },
+            "metadata": {
+                "kind": "compute#metadata",
+                "items": [
+                    {
+                        "key": "startup-script",
+                        "value": startup_script
                     },
-                    'diskSizeGb': diskSize
+                    {
+                        'key': 'bucket',
+                        'value': storage_bucket
+                    }
+                ]
+            },
+            "tags": {
+                "items": secrules,
+            },
+            "disks": [
+                {
+                    "kind": "compute#attachedDisk",
+                    "type": "PERSISTENT",
+                    "boot": True,
+                    "mode": "READ_WRITE",
+                    "autoDelete": True,
+                    "deviceName": f"{vm_name}-disk",
+                    "initializeParams": {
+                        "sourceImage": disk_image,
+                        "diskType": f"{project_zone}/diskTypes/pd-standard",
+                        "diskSizeGb": diskSize
+                    }
                 }
-            ],
-
-            # Specify a network interface with NAT to access the public
-            # internet.
-            'networkInterfaces': [{
-                'network': 'global/networks/default',
-                'accessConfigs': [
-                    {'type': 'ONE_TO_ONE_NAT', 'name': 'External NAT'}
-                ]
-            }],
-
-            # Allow the instance to access cloud storage and logging.
-            'serviceAccounts': [{
-                'email': self.auth_config['client_email'],
-                'scopes': [
-                    'https://www.googleapis.com/auth/devstorage.read_write',
-                    'https://www.googleapis.com/auth/logging.write',
-                    'https://www.googleapis.com/auth/cloud-platform'
-                ]
-            }],
-
-            # Metadata is readable from the instance and allows you to
-            # pass configuration from deployment scripts to instances.
-            'metadata': {
-                'items': [{
-                    # Startup script is automatically executed by the
-                    # instance upon startup.
-                    'key': 'startup-script',
-                    'value': startup_script
-                }, {
-                    'key': 'url',
-                    'value': image_url
-                }, {
-                    'key': 'text',
-                    'value': image_caption
-                }, {
-                    'key': 'bucket',
-                    'value': storage_bucket
-                }]
+              ],
+              "canIpForward": False,
+              "networkInterfaces": [
+                {
+                  "kind": "compute#networkInterface",
+                  "accessConfigs": [
+                    {
+                      "kind": "compute#accessConfig",
+                      "name": "External NAT",
+                      "type": "ONE_TO_ONE_NAT",
+                      "networkTier": "STANDARD"
+                    }
+                  ]
+                }
+              ],
+              "description": f"{vm_name} created using cloudmesh.",
+              "labels": {
+                "project_id": "cloudmesh"
+              },
+              "scheduling": {
+                "onHostMaintenance": "TERMINATE",
+                "automaticRestart": False
+              },
+              "deletionProtection": False,
+              "reservationAffinity": {
+                "consumeReservationType": "ANY_RESERVATION"
+              },
+              "serviceAccounts": [
+                {
+                  "email": self.auth_config['client_email'],
+                  "scopes": [
+                    "https://www.googleapis.com/auth/devstorage.read_only",
+                    "https://www.googleapis.com/auth/logging.write",
+                    "https://www.googleapis.com/auth/monitoring.write",
+                    "https://www.googleapis.com/auth/servicecontrol",
+                    "https://www.googleapis.com/auth/service.management.readonly",
+                    "https://www.googleapis.com/auth/trace.append"
+                  ]
+                }
+              ],
+              "shieldedInstanceConfig": {
+                "enableSecureBoot": False,
+                "enableVtpm": True,
+                "enableIntegrityMonitoring": True
+              }
             }
-        }
 
         return compute_config
 
     # TODO: Change params to dict or kwargs.
-    def __create_instance(self, compute_service, project, zone, name, bucket,
-                        disk_image, machineType, startup_script, image_caption,
-                        image_url, diskSize, group):
+    def _create_instance(self, compute_service, project, zone, name, bucket,
+                        disk_image, machineType, startup_script, diskSize, secgroup):
 
         """
-        Create a VM instance for given name.
+        create a VM instance for given name.
+
         :param compute_service:
         :param project:
         :param zone:
@@ -885,32 +994,25 @@ class Provider(ComputeNodeABC):
         :param disk_image:
         :param machineType:
         :param startup_script:
-        :param image_caption:
-        :param image_url:
         :param diskSize:
-        :param group:
+        :param secgroup:
         :return:
         """
 
         result = {}
 
-        # Configure the machine
-        machine_type = f"zones/{zone}/machineTypes/{machineType}"
-
         if (startup_script is not None):
             startup_script = open(startup_script, 'r').read()
 
-            image_url = "http://storage.googleapis.com/gce-demo-input/photo.jpg"
-            image_caption = "Ready for cloudmesh?"
-
         compute_config = self._get_compute_config(name,
-                                          machine_type,
-                                          disk_image,
-                                          image_caption,
-                                          image_url,
-                                          bucket,
-                                          startup_script,
-                                          diskSize)
+                                                  project,
+                                                  zone,
+                                                  machineType,
+                                                  disk_image,
+                                                  bucket,
+                                                  startup_script,
+                                                  diskSize,
+                                                  secgroup)
 
         try:
             # Invoke compute insert comment to create a new instance.
@@ -935,11 +1037,14 @@ class Provider(ComputeNodeABC):
                 Console.error(
                     f"Error creating instance: {name} - {de._get_reason()}")
             else:
-                Console.error(
-                    f"Error creating instance: {name} - {de}")
+                Console.error(f"Error creating instance: {name} - {de}")
+
             result = {}
+
+            raise ValueError(f"Creating of instance: {name} failed.")
+
         else:
-            vm_info = self.__info(name,
+            vm_info = self._info(name,
                                  displayType="vm",
                                  compute_service=compute_service)
 
@@ -972,6 +1077,8 @@ class Provider(ComputeNodeABC):
         """
 
         resource_group = group or self.default_config['resource_group']
+        secgroup = kwargs.get('secgroup', 'default')
+
         bucket = kwargs.get('storage_bucket', self.default_config['storage_bucket'])
 
         name = name or 'vm1'
@@ -985,8 +1092,6 @@ class Provider(ComputeNodeABC):
             machineType = 'g1-small'
 
         startup_script = kwargs.get('startup_script', None)
-        image_caption = kwargs.get('image_caption', None)
-        image_url = kwargs.get('image_url', None)
 
         #Get the image link using the name of the image.
         os_image = self.image(image)
@@ -996,15 +1101,14 @@ class Provider(ComputeNodeABC):
 
         disk_image = os_image['selfLink']
 
-        result = self.__create_instance(compute_service, project_id, zone, name,
+        result = self._create_instance(compute_service, project_id, zone, name,
                                         bucket, disk_image, machineType,
-                                        startup_script, image_caption,
-                                        image_url, diskSize=size,
-                                        group=resource_group)
+                                        startup_script, diskSize=size,
+                                        secgroup=secgroup)
 
         return result
 
-    def set_server_metadata(self, name, **metadata):
+    def set_server_metadata(self, name, **keys):
         """
         sets the metadata for the server
 
@@ -1013,7 +1117,28 @@ class Provider(ComputeNodeABC):
         :return:
         """
 
-        raise NotImplementedError
+        metadata = self._get_instance_metadata(name)
+
+        metadata_items = metadata.get('items',  [])
+
+        for key, value in keys.items():
+            #banner(f"{key}={value}")
+            metadata_items.append({"key":key, "value":value})
+
+        metadata['items'] =  metadata_items
+
+        project_id = self.auth_config["project_id"]
+        zone =  self.default_config["zone"]
+
+        operation_result = self._update_metadata(project_id,
+                                                  zone,
+                                                  name,
+                                                  metadata)
+
+        if operation_result and operation_result.get('status') == 'DONE':
+            Console.ok(f"Metadata keys added to instance {name}")
+
+        return metadata_items
 
     def get_server_metadata(self, name):
         """
@@ -1022,16 +1147,89 @@ class Provider(ComputeNodeABC):
         :param name: name of the fm
         :return:
         """
-        raise NotImplementedError
+        metadata = self._get_instance_metadata(name)
+        metadata_items = metadata.get('items')
+        return metadata_items
 
-    def delete_server_metadata(self, name):
+    def _update_metadata(self, project_id, zone, name, instance_metadata):
+        """
+        adds/updates/deletes the instance metadata
+
+        :param project_id:
+        :param zone:
+        :param name:
+        :param instance_metadata:
+        :return:
+        """
+
+        result = None
+        compute_service = self._get_compute_service()
+        _operation = None
+
+        if name is None:
+            return
+        try:
+
+            requestId = str(uuid.uuid1())
+
+            _operation = compute_service.instances().setMetadata(
+                project=project_id,
+                zone=zone,
+                instance=name,
+                body=instance_metadata,
+                requestId=requestId).execute()
+
+            result = self._wait_for_operation(compute_service,
+                                     _operation,
+                                     project_id,
+                                     zone,
+                                     name)
+
+        except Exception as se:
+            if type(se) == HttpError:
+                Console.error(
+                    f'Unable to update metadata on instance {name}. '
+                    f'Reason: {se._get_reason()}')
+            else:
+                Console.error(f'Unable to update metadata on instance {name}.')
+
+        return result
+
+    def delete_server_metadata(self, name, key):
         """
         gets the metadata for the server
 
         :param name: name of the fm
         :return:
         """
-        raise NotImplementedError
+
+        metadata = self._get_instance_metadata(name)
+
+        metadata_items = metadata.get('items')
+
+        key_exists = False;
+
+        for item in metadata_items:
+            if item['key'] == key:
+                metadata_items.remove(item)
+                key_exists = True;
+                break
+
+        if not key_exists:
+            Console.error(f"Metadata key {key} not found in instance {name}")
+            return metadata_items
+
+        metadata['items'] =  metadata_items
+
+        project_id = self.auth_config["project_id"]
+        zone =  self.default_config["zone"]
+
+        operation_result = self._update_metadata(project_id, zone, name, metadata)
+
+        if operation_result and operation_result.get('status') == 'DONE':
+            Console.ok(f"Metadata key {key} deleted from instance {name}")
+
+        return metadata_items
 
     def rename(self, name=None, destination=None):
         """
@@ -1042,11 +1240,13 @@ class Provider(ComputeNodeABC):
         :return: the dict with the new name
         """
         # if destination is None, increase the name counter and use the new name
+        Console.error("Google cloud does not allow renaming of VM")
         raise NotImplementedError
 
-    def __get_project_metadata(self, project_id):
+    def _get_project_metadata(self, project_id):
         """
-        Method to get list of keys from google project.
+        gets a list of keys from google project.
+
         :param project_id: Project Id to get info for.
         :return:
         """
@@ -1057,9 +1257,29 @@ class Provider(ComputeNodeABC):
 
         return response
 
-    def __get_keys(self, cloud):
+    def _get_instance_metadata(self, name):
         """
-        Method to get keys on google cloud from DB.
+        get a list of keys from google project.
+
+        :param project_id: Project Id to get info for.
+        :return:
+        """
+        metadata = {}
+
+        try:
+            info = self._raw_instance_info(name)
+
+            metadata = info.get('metadata')
+
+        except Exception as e:
+            Console.error(f"Instance with name {name} not found.")
+
+        return metadata
+
+    def _get_keys(self, cloud):
+        """
+        get s keys on google cloud from DB.
+
         :param cloud:
         :return:
         """
@@ -1071,21 +1291,25 @@ class Provider(ComputeNodeABC):
 
         return db_keys
 
-    def __key_already_exists(self, cloud, name):
+    def _key_already_exists(self, cloud, name, public_key):
         """
-        Method to check if the key with name already exists.
+        checks if the key with name already exists.
+
         :param name: Name of the key to be added and checked.
         :return:
         """
-        exists = False
-        db_keys = self.__get_keys(cloud)
+        key_found = None
+
+        db_keys = self._get_keys(cloud)
+
+        fingerprint = SSHkey._fingerprint(public_key)
 
         for key in db_keys:
-            if key["user"] == name:
-                exists = True
+            if key["fingerprint"] == fingerprint:
+                key_found = key
                 break;
 
-        return exists
+        return key_found
 
     def keys(self):
         """
@@ -1097,7 +1321,7 @@ class Provider(ComputeNodeABC):
         # Get the project id from auth config.
         project_id = self.auth_config['project_id']
 
-        proj_metadata = self.__get_project_metadata(project_id)
+        proj_metadata = self._get_project_metadata(project_id)
 
         # Generate a simple dict from response.
         keys = self._key_dict(proj_metadata)
@@ -1110,6 +1334,7 @@ class Provider(ComputeNodeABC):
     def key_upload(self, key=None):
         """
         uploads the key specified in the yaml configuration to the cloud
+
         :param key:
         :return:
         """
@@ -1118,18 +1343,13 @@ class Provider(ComputeNodeABC):
 
         cloud = self.cloud
 
-        if self.__key_already_exists(cloud, name):
-            raise ValueError(f"{name} key already exists.")
-        else:
-            Console.msg(f"Upload the key: {name} -> {cloud}")
-
         # Get the project id from auth config.
         project_id = self.auth_config['project_id']
 
         try:
             requestId = str(uuid.uuid1())
 
-            proj_metadata = self.__get_project_metadata(project_id)
+            proj_metadata = self._get_project_metadata(project_id)
 
             commonInstanceMetadata = proj_metadata['commonInstanceMetadata']
             items = commonInstanceMetadata.get('items') or []
@@ -1148,7 +1368,7 @@ class Provider(ComputeNodeABC):
             for item in items:
                 if item['key'] == 'ssh-keys':
                     currVal = item["value"]
-                    newVal = f"{currVal} \n {new_key}"
+                    newVal = f"{currVal}\n{new_key}"
                     item["value"] = newVal
                     keys_exists = True
                     break;
@@ -1174,24 +1394,96 @@ class Provider(ComputeNodeABC):
                                      name=name)
 
         except Exception as e:
-            pprint(e)
             raise ValueError(f"Error uploading key : {name}")
             key = None
 
         return key
 
-
     def key_delete(self, name=None):
         """
         deletes the key with the given name
+
         :param name: The name of the key
         :return:
         """
-        raise NotImplementedError
+
+        # Get the project id from auth config.
+        project_id = self.auth_config['project_id']
+
+        key = self._get_keys(self.cloud)
+
+        try:
+            requestId = str(uuid.uuid1())
+
+            proj_metadata = self._get_project_metadata(project_id)
+
+            commonInstanceMetadata = proj_metadata['commonInstanceMetadata']
+            keys = self._key_dict(proj_metadata)
+
+            key_found = False
+            for key in keys:
+                if key['name'] == name:
+                    keys.remove(key)
+                    key_found = True
+                    break
+
+            if key_found == False:
+                Console.error(f"Key {name} not found.")
+                raise ValueError(f"Key {name} not found.")
+
+            items = commonInstanceMetadata.get('items') or []
+
+            newVal = None
+
+            for item in items:
+                if item['key'] == 'ssh-keys':
+                    for key in keys:
+                        # Compuse new key list
+                        new_key = f"{key['name']}:{key['public_key']}"
+
+                        if key.get('user_id') is not None:
+                            user_info = {"userName": key["user_id"],
+                                         "expireOn": key["expireOn"]}
+
+                            new_key = f"{new_key} {user_info}\n"
+
+                        if newVal is None:
+                            newVal = new_key
+                        else:
+                            newVal = f"{newVal}\n{new_key}"
+
+                    if newVal:
+                        item["value"] = newVal
+                    else:
+                        #No more keys, remove ssh-keys dict from list.
+                        items.remove(item)
+
+            commonInstanceMetadata['items'] = items
+
+            #Update project metadata to delete the key.
+            compute_service = self._get_compute_service()
+
+            _oper = compute_service.projects().setCommonInstanceMetadata(
+                project=project_id,
+                body=commonInstanceMetadata,
+                requestId=requestId).execute()
+
+            self._wait_for_operation(compute_service, _oper,
+                                     project_id,
+                                     name=name)
+
+        except Exception as e:
+            raise ValueError(f"Error deleting key : {name}")
+            key = None
+        else:
+            Console.ok(f"Key {name} is deleted.")
+
+        return key
 
     def images(self, **kwargs):
         """
         Lists the images on the cloud
+
         :return: dict
         """
         result = None
@@ -1240,6 +1532,7 @@ class Provider(ComputeNodeABC):
     def image(self, name=None, **kwargs):
         """
         Gets the image with a given name
+
         :param name: The name of the image
         :return: the dict of the image
         """
@@ -1276,9 +1569,32 @@ class Provider(ComputeNodeABC):
 
             result = self.update_dict(image, kind="image")
 
-        VERBOSE(result)
-
         return result
+
+    def flavor(self, name, **kwargs):
+        """
+        Gets the flavor with a given name
+
+        :param name: The name of the flavor
+        :return: The dict of the flavor
+        """
+        comput_servce = self._get_compute_service()
+        project_id = kwargs.get('project_id', self.auth_config['project_id'])
+        zone = kwargs.get('zone',  self.default_config['zone'])
+        flavor = self._get_flavor(self, comput_servce, project_id, zone, name)
+
+        return flavor
+
+    def _get_flavor(self, compute_service, project_id, zone, name):
+        # Get the flavor for the project_id.
+        flavor = None;
+        try:
+            flavor = compute_service.machineTypes().get(project=project_id, zone=zone, machineType=name).execute()
+        except Exception as e:
+            print(f'Error in get_flavors {e}')
+        flavor=self.update_dict(flavor, kind='flavor')
+
+        return flavor
 
     def flavors(self, **kwargs):
         """
@@ -1286,15 +1602,27 @@ class Provider(ComputeNodeABC):
 
         :return: dict of flavors
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project_id = kwargs.get('project_id', self.auth_config['project_id'])
+        zone = kwargs.get('zone',  self.default_config['zone'])
 
-    def flavor(self, name=None):
-        """
-        Gets the flavor with a given name
-        :param name: The name of the flavor
-        :return: The dict of the flavor
-        """
-        raise NotImplementedError
+        return self._get_flavors(comput_servce, project_id, zone)
+
+    def _get_flavors(self, compute_service, project_id, zone):
+        source_disk_flavor = None
+        # Get the flavors for the image project.
+        try:
+            # Get list of images related to image project.
+            flavor_response = compute_service.machineTypes()\
+                                             .list(project=project_id,
+                                                   zone=zone).execute()
+            # Extract the items.
+            source_disk_flavor = flavor_response['items']
+        except Exception as e:
+            print(f'Error in get_flavors {e}')
+        source_disk_flavor = self.update_dict(source_disk_flavor, kind='flavor')
+
+        return source_disk_flavor
 
     def reboot(self, name=None):
         """
@@ -1370,6 +1698,29 @@ class Provider(ComputeNodeABC):
         """
         raise NotImplementedError
 
+    def _list_local_secgroups(self, name=None):
+        """
+        Method to get the local sec group list.
+        :param name:
+        :return:
+        """
+        secgroup = Secgroup()
+
+        grp_list = secgroup.list(name)
+
+        secrule = SecgroupRule()
+
+        for item in grp_list:
+            security_group_rules = []
+            # Extract rules.
+            for rulename in item['rules']:
+                rule_detail = secrule.find(name=rulename)
+                security_group_rules.append(rule_detail[0])
+
+            item["security_group_rules"] = security_group_rules
+
+        return grp_list
+
     def list_secgroups(self, name=None):
         """
         List the named security group
@@ -1378,6 +1729,68 @@ class Provider(ComputeNodeABC):
         :return:
         """
 
+        firewall_list = []
+
+        try:
+            project_id = self.auth_config['project_id']
+
+            compute_service = self._get_compute_service()
+
+            result = compute_service.firewalls() \
+                .list(project=project_id,
+                      orderBy="name") \
+                .execute()
+
+            if "items" in result:
+                rules = result["items"]
+                for rule in rules:
+                    if name:
+                        if f"cm-{name}-" in rule['name']:
+                            firewall_list.append(rule)
+                    else:
+                        if f"cm-" in rule['name']:
+                            firewall_list.append(rule)
+
+            added = []
+            firewalls = {}
+
+            for item in firewall_list:
+                rule = item["name"]
+                names = rule.split('-')
+                names_len = len(names)
+
+                if names_len < 3:
+                    continue
+                elif names_len == 3:
+                    sec_group_name = name or names[1]
+                else:
+                    if name:
+                        sec_group_name = name
+                    else:
+                        sec_group_name = names[1]
+                        for i in range(2, names_len-1):
+                            sec_group_name = sec_group_name + '-' + names[i]
+
+                if sec_group_name in added:
+                    firewalls[sec_group_name]["security_group_rules"].append(
+                        item)
+                    firewalls[sec_group_name]["rules"].append(names[names_len-1])
+                else:
+                    firewalls[sec_group_name] = {
+                        "name": sec_group_name,
+                        "description": item['description'].split('-')[1],
+                        "rules": [names[names_len-1]],
+                        "security_group_rules": [item]
+                    }
+                    added.append(sec_group_name)
+
+        except Exception as e:
+            Console.error(f"Error : {e}")
+            # raise ValueError(f"Error  : {e}")
+            firewalls = {}
+
+        return list(firewalls.values())
+
     def list_secgroup_rules(self, name='default'):
         """
         List the named security group
@@ -1385,10 +1798,97 @@ class Provider(ComputeNodeABC):
         :param name: The name of the group, if None all will be returned
         :return:
         """
-        raise NotImplementedError
+        firewall_list = self.list_secgroups()
+        result = []
+
+        for group in firewall_list:
+            for rule in group['security_group_rules']:
+                #Exctract rule name from cm={groupname}={rulename} format.
+                rule_names = rule['name'].split("-")
+                rule['name'] = rule_names[len(rule_names)-1]
+                allowed = rule['allowed'][0]
+                rule['protocol'] = allowed['IPProtocol']
+                if 'ports' in allowed:
+                    rule['ports'] = allowed['ports']
+
+                result.append(rule)
+
+        return result
 
     def upload_secgroup(self, name=None):
-        raise NotImplementedError
+        """
+        Method to upload rules from the given sec-group to google cloud.
+        :param name: Name of the security group.
+        :return:
+        """
+        if not name:
+            Console.error('Sec Group Name is required to upload Rules')
+            raise ValueError('Sec Group Name is required to upload Rules')
+
+        # Get required sec group.
+        grp = self._list_local_secgroups(name)
+
+        if grp:
+            grp = grp[0]
+        else:
+            Console.warning(f"No sec group found with name {name}")
+            return
+
+        security_group_rules = grp['security_group_rules']
+
+        project_id = self.auth_config['project_id']
+
+        compute_service = self._get_compute_service()
+
+        for rule in security_group_rules:
+            firewall_name = f"cm-{name}-{rule['name']}"
+
+            firewall = {
+                "kind": "compute#firewall",
+                "name": firewall_name,
+                "network": "projects/prefab-manifest-269104/global/networks/default",
+                "direction": "INGRESS",
+                "priority": 1000,
+                "description": f"{rule['name']} - {grp['description']}",
+                "targetTags": [
+                    firewall_name
+                ],
+                "allowed": [
+                    {
+                        "IPProtocol": rule['protocol'],
+                        "ports": [
+                            rule["ports"].replace(':', '-')
+                        ]
+                    }
+                ],
+                "sourceRanges": [
+                    rule["ip_range"]
+                ]
+            }
+
+            if not firewall["allowed"][0]["ports"][0]:
+                del firewall["allowed"][0]["ports"]
+
+            requestId = str(uuid.uuid1())
+
+            try:
+                _oper = compute_service.firewalls() \
+                    .insert(project=project_id,
+                            body=firewall,
+                            requestId=requestId).execute()
+            except Exception as se:
+                if type(se) == HttpError:
+                    Console.error(
+                        f'Error uploading rule: Reason: {se._get_reason()}')
+                else:
+                    Console.error(f'Error uploading sec group {name}.')
+            else:
+                if _oper:
+                    self._wait_for_operation(compute_service, _oper,
+                                             project_id,
+                                             name=firewall_name)
+
+        return None
 
     def add_secgroup(self, name=None, description=None):
         raise NotImplementedError
@@ -1401,7 +1901,46 @@ class Provider(ComputeNodeABC):
         raise NotImplementedError
 
     def remove_secgroup(self, name=None):
-        raise NotImplementedError
+        """
+        Method to remove sec group google cloud. On GCP it will remove all rules
+        with name format cm-{name}- from the project.
+        :param name: Name of the secgroup
+        :return:
+        """
+
+        if not name:
+            Console.error('Sec Group Name is required to delete Rules')
+            raise ValueError('Sec Group Name is required to delete Rules')
+
+        rules = self.list_secgroup_rules(name)
+
+        project_id = self.auth_config['project_id']
+
+        compute_service = self._get_compute_service()
+
+        name_format = f"cm-{name}-"
+
+        for rule in rules:
+            requestId = str(uuid.uuid1())
+            firewall_name = rule['targetTags'][0]
+            if name_format in firewall_name:
+                try:
+                    _oper = compute_service.firewalls() \
+                        .delete(project=project_id,
+                                firewall=firewall_name,
+                                requestId=requestId).execute()
+                except Exception as se:
+                    if type(se) == HttpError:
+                        Console.error(
+                            f'Error deleting rule: Reason: {se._get_reason()}')
+                    else:
+                        Console.error(f'Unable to delete instance {name}.')
+                else:
+                    if _oper:
+                        self._wait_for_operation(compute_service, _oper,
+                                                 project_id,
+                                                 name=firewall_name)
+        return ""
 
     def add_rules_to_secgroup(self, name=None, rules=None):
         raise NotImplementedError
@@ -1421,7 +1960,29 @@ class Provider(ComputeNodeABC):
         :param timeout: timeout
         :return:
         """
-        raise NotImplementedError
+        name = vm['name']
+        if interval is None:
+            # if interval is too low, OS will block your ip (I think)
+            interval = 10
+        if timeout is None:
+            timeout = 60
+        Console.info(
+            f"waiting for instance {name} to be reachable: Interval: "
+            f"{interval}, Timeout: {timeout}")
+        timer = 0
+        while timer < timeout:
+            sleep(interval)
+            timer += interval
+            try:
+                r = self.list()
+                r = self.ssh(vm=vm, command='echo IAmReady').strip()
+                if 'IAmReady' in r:
+                    return True
+            except Exception as e:
+                #If the error is not connection refused, then break.
+                Console.error(r)
+                break
+
         return False
 
     def console(self, vm=None):
@@ -1440,23 +2001,17 @@ class Provider(ComputeNodeABC):
 
     def ssh(self, vm=None, command=None):
 
-        if platform.lower() == 'win32':
-            # TODO: Make common code from openstack compute provider and resuse.
-            Console.error(
-                "Google cloud ssh is not yet implemented on windows. Please try on linux based system.")
-            raise NotImplementedError
-
         ip = vm['ip_public']
         result = None
-
-        if command is None:
-            command = ""
 
         if ip is None:
             Console.error("Public IP for VM not found.")
             return result
         else:
             location = ip
+
+        if command is None:
+            command = ""
 
         cmd = "ssh " \
               "-o StrictHostKeyChecking=no " \
@@ -1487,6 +2042,7 @@ class Provider(ComputeNodeABC):
         """
         Given a json file downloaded from google, copies the content into the
         cloudmesh yaml file, while overwriting or creating a new compute provider
+
         :param cls:
         :param name:
         :param filename: Service Account Key file downloaded from google cloud.
