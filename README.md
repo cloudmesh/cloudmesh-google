@@ -85,3 +85,15 @@ instances.delete(project, zone, instance) # Delete specific instance
 ```
 
 API reference: <http://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.html>
+
+
+### Status
+
+#### Finished Functions
+
+```
+Flavor 
+Flavors 
+
+
+```
