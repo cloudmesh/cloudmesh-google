@@ -87,13 +87,57 @@ instances.delete(project, zone, instance) # Delete specific instance
 API reference: <http://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.html>
 
 
-### Status
-
-#### Finished Functions
-
+# Status
+the functions has been done in Provider.py:
+* Flavor 
+* Flavors 
+to list all Flavors in project zone
 ```
-Flavor 
-Flavors 
+cms flavor list
+```
+* create IP
+To create a new available IP address
+```
+cms ip create 1
+```
+* delete IP
+To delete certain IP address 
+```
+cms ip delete "IP address"
+```
+* list IP addresses
+```
+cms ip list
+```
+* get IP
+* find available IP/ used with attach function
 
+## Pytest
+Test the IP's functions:
+```
+cms set cloud=google 
+cms cd cloudmesh-google
+pytest -v --capture=no tests/test_ip.py
+pytest -v  tests/test_ip.py
+```
+for indivual test:
+```
+pytest -v --capture=no  tests/test_ip.py::TestIp=::test_cms_ip_list
+pytest -v --capture=no  tests/test_ip.py::TestIp=::test_cms_create_ip
+pytest -v --capture=no  tests/test_ip.py::TestIp=::test_cms_delete_ip
+```
 
+Test the flavor
+```
+cms set cloud=google
+cms cl cloudmesh-cloud
+pytest -v --capture=no tests/cloud/test_04_flavor.py
+```
+for indivual test:
+```
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_empty_database
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_provider_flavor
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_provider_flavor_update
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_cms_flavor_refresh
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_cms_flavor
 ```

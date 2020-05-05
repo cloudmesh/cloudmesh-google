@@ -29,9 +29,7 @@ variables = Variables()
 VERBOSE(variables.dict())
 
 key = variables['key']
-
 cloud = variables.parameter('cloud')
-
 print(f"Test run for {cloud}")
 
 if cloud is None:
@@ -41,7 +39,6 @@ provider = None
 config = None
 bucket = None
 
-
 def run(cmd):
     StopWatch.start(cmd)
     result = runcommand(cmd)
@@ -49,15 +46,15 @@ def run(cmd):
     print(result)
     return result
 
-
 provider = Provider(cloud)
 assert provider.kind == "google"
 config = Config()
 
-result = None
+# result = None
 
 @pytest.mark.incremental
 class TestIp(object):
+
 
     def test_list_public_ips(self):
         HEADING()
@@ -76,6 +73,7 @@ class TestIp(object):
 
     def test_cms_create_ip(self):
         HEADING()
+        # global result
         Benchmark.Start()
         result = Shell.execute("cms ip create 1", shell=True)
         Benchmark.Stop()
@@ -84,14 +82,13 @@ class TestIp(object):
 
     def test_cms_delete_ip(self):
         HEADING()
-        pprint(result)
-        del_address = None
-        del_address = result['address']
+        # global result
+        # del_address = result[412:425]
         Benchmark.Start()
-        res = Shell.execute(f"cms ip delete {del_address}", shell=True)
+        result = Shell.execute(f"cms ip delete 35.193.42.211", shell=True)
         Benchmark.Stop()
-        VERBOSE(res)
-        assert "AddressType" in res
+        VERBOSE(result)
+        assert "AddressType" in result
 
     def test_benchmark(self):
         HEADING()

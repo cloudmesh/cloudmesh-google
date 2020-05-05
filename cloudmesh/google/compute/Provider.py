@@ -18,6 +18,7 @@ from cloudmesh.management.configuration.SSHkey import SSHkey
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from random import random
 
 
 class Provider(ComputeNodeABC):
@@ -40,7 +41,8 @@ class Provider(ComputeNodeABC):
                     image_project: ubuntu-os-cloud
                     project_name: cloudmesh
                     storage_bucket: cloudmesh-bucket
-                    zone: us-west3-a
+                    zone: us-central1-a
+                    region: us-central1
                     flavor: g1-small
                     size: 10
                     resource_group: cloudmesh-group
@@ -145,6 +147,17 @@ class Provider(ComputeNodeABC):
                        "OS_Disk_Size",
                        "Memory",
                        "Max_Data_Disk"]},
+        "ip": {
+            "sort_keys": ["id"],
+            "order": ["name",
+                      'address',
+                      'status',
+                      'addressType'],
+            "header": ["Name",
+                       'Address',
+                       'Status',
+                       'AddressType']
+        },
         "metadata": {
             "sort_keys": ["key"],
             "order": ["key",
@@ -436,7 +449,7 @@ class Provider(ComputeNodeABC):
                 entry['cm'] = {}
 
             if kind == 'ip':
-                entry['name'] = entry['floating_ip_address']
+                entry['name'] = entry['name']
 
             entry["cm"].update({
                 "kind": kind,
@@ -1588,6 +1601,26 @@ class Provider(ComputeNodeABC):
         :param ip: The ip address
         :return:
         """
+        # comput_servce = self._get_compute_service()
+        # project = self.auth_config['project_id']
+        # zone = self.default_config['zone']
+        #
+        # # The instance name for this request.
+        # instance = self.info(name)  # TODO: Update placeholder value.
+        #
+        # # The name of the network interface to add to this instance.
+        # network_interface = self.find_available_public_ip()  # TODO: Update placeholder value.
+        #
+        # access_config_body = {
+        #
+        # }
+        #
+        # request = comput_servce.instances().addAccessConfig(project=project, zone=zone, instance=instance,
+        #                                               networkInterface=network_interface, body=access_config_body)
+        # response = request.execute()
+        #
+        # # TODO: Change code below to process the `response` dict:
+        # pprint(response)
         raise NotImplementedError
 
     def detach_public_ip(self, name=None, ip=None):
@@ -1607,7 +1640,24 @@ class Provider(ComputeNodeABC):
         :param ip: the ip address, if None than all will be deleted
         :return:
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project = self.auth_config['project_id']
+        region = self.default_config['region']
+
+        # Name of the address resource to delete.
+        ipList = self.list_public_ips()
+        address = None
+        for item in ipList:
+            if item['address'] == ip:
+                address = item['name']
+                break
+        if not address:
+            raise ValueError('ip address not found')
+
+        request = comput_servce.addresses().delete(project=project, region=region, address=address)
+        response = request.execute()
+
+        return self.update_dict(response, kind="ip")
 
     def list_public_ips(self, available=False):
         """
@@ -1618,7 +1668,21 @@ class Provider(ComputeNodeABC):
 
         :return:
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project = self.auth_config['project_id']
+        region = self.default_config['region']
+
+        request = comput_servce.addresses().list(project=project, region=region)
+        output = []
+        while request is not None:
+            response = request.execute()
+            VERBOSE(response)
+            for address in response['items']:
+                output.append(address)
+
+            request = comput_servce.addresses().list_next(previous_request=request, previous_response=response)
+        pprint(output)
+        return self.update_dict(output, kind="ip")
 
     def create_public_ip(self):
         """
@@ -1626,7 +1690,21 @@ class Provider(ComputeNodeABC):
 
         :return: The ip address information
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project = self.auth_config['project_id']
+        region = self.default_config['region']
+
+        rand = int(random() * 1000)
+        name = f"ip-{rand}"
+        address_body = {
+            "name": name,
+            "description": "cloudmesh ip creation",
+        }
+
+        request = comput_servce.addresses().insert(project=project, region=region, body=address_body)
+        response = request.execute()
+
+        return self.update_dict(response, kind="ip")
 
     def find_available_public_ip(self):
         """
@@ -1634,7 +1712,26 @@ class Provider(ComputeNodeABC):
 
         :return: The ip
         """
-        raise NotImplementedError
+        comput_servce = self._get_compute_service()
+        project = self.auth_config['project_id']
+        region = self.default_config['region']
+
+        ips = self.list_public_ips()
+        address = None
+        for item in ips:
+            address = item['name']
+            break
+        if not address:
+            raise ValueError('ip address not found')
+        filter = "status!=IN_USE"
+
+        request = comput_servce.addresses().list(project=project, region=region, address=address, filter=filter)
+        response = request.execute()
+
+        if len(response) > 0:
+            ip = response[0]
+
+        return self.update_dict(response, kind="ip")
 
     def get_public_ip(self, name=None):
         """
@@ -1643,7 +1740,10 @@ class Provider(ComputeNodeABC):
         :param name: name of the server
         :return:
         """
-        raise NotImplementedError
+        vm = self.info(name)
+        ip = vm['ip_public']
+
+        return ip
 
     def list_secgroups(self, name=None):
         """
