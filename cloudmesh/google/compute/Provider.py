@@ -1601,26 +1601,6 @@ class Provider(ComputeNodeABC):
         :param ip: The ip address
         :return:
         """
-        # comput_servce = self._get_compute_service()
-        # project = self.auth_config['project_id']
-        # zone = self.default_config['zone']
-        #
-        # # The instance name for this request.
-        # instance = self.info(name)  # TODO: Update placeholder value.
-        #
-        # # The name of the network interface to add to this instance.
-        # network_interface = self.find_available_public_ip()  # TODO: Update placeholder value.
-        #
-        # access_config_body = {
-        #
-        # }
-        #
-        # request = comput_servce.instances().addAccessConfig(project=project, zone=zone, instance=instance,
-        #                                               networkInterface=network_interface, body=access_config_body)
-        # response = request.execute()
-        #
-        # # TODO: Change code below to process the `response` dict:
-        # pprint(response)
         raise NotImplementedError
 
     def detach_public_ip(self, name=None, ip=None):
@@ -1681,7 +1661,6 @@ class Provider(ComputeNodeABC):
                 output.append(address)
 
             request = comput_servce.addresses().list_next(previous_request=request, previous_response=response)
-        pprint(output)
         return self.update_dict(output, kind="ip")
 
     def create_public_ip(self):

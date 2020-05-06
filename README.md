@@ -116,7 +116,7 @@ cms ip list
 Test the IP's functions:
 ```
 cms set cloud=google 
-cms cd cloudmesh-google
+cd cloudmesh-google
 pytest -v --capture=no tests/test_ip.py
 pytest -v  tests/test_ip.py
 ```
@@ -130,7 +130,7 @@ pytest -v --capture=no  tests/test_ip.py::TestIp=::test_cms_delete_ip
 Test the flavor
 ```
 cms set cloud=google
-cms cl cloudmesh-cloud
+cd cloudmesh-cloud
 pytest -v --capture=no tests/cloud/test_04_flavor.py
 ```
 for indivual test:

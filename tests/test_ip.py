@@ -63,32 +63,31 @@ class TestIp(object):
         contents = provider.list()
         Benchmark.Stop()
 
-    def test_cms_ip_list(self):
-        HEADING()
-        Benchmark.Start()
-        result = Shell.execute("cms ip list", shell=True)
-        Benchmark.Stop()
-        VERBOSE(result)
-        assert "AddressType" in result
-
     def test_cms_create_ip(self):
         HEADING()
-        # global result
         Benchmark.Start()
         result = Shell.execute("cms ip create 1", shell=True)
         Benchmark.Stop()
         VERBOSE(result)
         assert "AddressType" in result
 
-    def test_cms_delete_ip(self):
+    def test_cms_ip_list(self):
         HEADING()
-        # global result
-        # del_address = result[412:425]
+        global result
         Benchmark.Start()
-        result = Shell.execute(f"cms ip delete 35.193.42.211", shell=True)
+        result = Shell.execute("cms ip list", shell=True)
         Benchmark.Stop()
         VERBOSE(result)
         assert "AddressType" in result
+
+    def test_cms_delete_ip(self):
+        HEADING()
+        global result
+        del_address = result.split("'items': [{'address':")[-1].split(',')[0].replace("'", "")
+        Benchmark.Start()
+        result = Shell.execute(f"cms ip delete {del_address}", shell=True)
+        Benchmark.Stop()
+        VERBOSE(result)
 
     def test_benchmark(self):
         HEADING()
