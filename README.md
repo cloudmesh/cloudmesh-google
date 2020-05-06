@@ -91,16 +91,19 @@ API reference: <http://googleapis.github.io/google-api-python-client/docs/dyn/co
 the functions has been done in Provider.py:
 * Flavor 
 * Flavors 
+
 to list all Flavors in project zone
 ```
 cms flavor list
 ```
 * create IP
+
 To create a new available IP address
 ```
 cms ip create 1
 ```
 * delete IP
+
 To delete certain IP address 
 ```
 cms ip delete "IP address"
@@ -110,6 +113,7 @@ cms ip delete "IP address"
 cms ip list
 ```
 * get IP
+
 * find available IP/ used with attach function
 
 ## Pytest
@@ -122,9 +126,9 @@ pytest -v  tests/test_ip.py
 ```
 for indivual test:
 ```
-pytest -v --capture=no  tests/test_ip.py::TestIp=::test_cms_ip_list
-pytest -v --capture=no  tests/test_ip.py::TestIp=::test_cms_create_ip
-pytest -v --capture=no  tests/test_ip.py::TestIp=::test_cms_delete_ip
+pytest -v --capture=no  tests/test_ip.py::TestIp::test_cms_ip_list
+pytest -v --capture=no  tests/test_ip.py::TestIp::test_cms_create_ip
+pytest -v --capture=no  tests/test_ip.py::TestIp::test_cms_delete_ip
 ```
 
 Test the flavor
