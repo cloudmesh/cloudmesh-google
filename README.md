@@ -1,8 +1,5 @@
 # Cloudmesh Google Providers
 
-
-
-
 [![image](https://img.shields.io/travis/TankerHQ/cloudmesh-google.svg?branch=master)](https://travis-ci.org/TankerHQ/cloudmesh-google)
 
 [![image](https://img.shields.io/pypi/pyversions/cloudmesh-google.svg)](https://pypi.org/project/cloudmesh-google)
@@ -11,9 +8,9 @@
 
 [![image](https://img.shields.io/github/license/TankerHQ/python-cloudmesh-google.svg)](https://github.com/TankerHQ/python-cloudmesh-google/blob/master/LICENSE)
 
-see cloudmesh.cmd5
+see cloudmesh.google
 
-* https://github.com/cloudmesh/cloudmesh.cmd5
+* https://github.com/cloudmesh/cloudmesh-google
 
 ## Introduction
 Cloudmesh-google provider offers various cloud engineering operations via command line.
@@ -24,7 +21,6 @@ cloudmesh-google storage module provides following options via command line usin
 * list
 * delete
 
-
 Also following options are available via command line using `cms google` :
 * json_to_yaml (adds json file information to yaml)
 * yaml_to_json (creates a json file from yaml entry)
@@ -34,25 +30,35 @@ Also following options are available via command line using `cms google` :
 * rename_blob
 * copy_blob_btw_buckets
 
+cloudmesh-google compute module provides following options via command line using `cms com[pute`  :
+
+* flavor 
+* create IP
+* delete IP
+* list IP
+* find available IP
+* get IP
+
+IP Reference: https://cloudmesh.github.io/cloudmesh-manual/manual/ip.html
+
+Flavor Reference: https://cloudmesh.github.io/cloudmesh-manual/manual/flavor.html
 
 ## Installation
 Refer installation of cloudmesh-google:
-* <https://cloudmesh.github.io/cloudmesh-manual/accounts/google/google.html#instaltion-of-cloudmesh-google-providers>
+* https://cloudmesh.github.io/cloudmesh-manual/installation/index.html
 
 ## References
 
-* Google account creation <https://cloudmesh.github.io/cloudmesh-manual/accounts/google.html>
+* Google account creation https://cloudmesh.github.io/cloudmesh-manual/accounts/google/account.html
 
 ## Specifications
 
-google-cloud-storage
-
+* google-cloud-storage
+* google-cloud-compute
 
 ### json
 
-
 ```
-
     {
       "type": "service_account",
       "project_id": "imposing-coast-257700",
@@ -85,3 +91,40 @@ instances.delete(project, zone, instance) # Delete specific instance
 ```
 
 API reference: <http://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.html>
+
+## Pytest
+
+Test the IP's functions:
+
+```
+cms set cloud=google 
+cd cloudmesh-google
+pytest -v --capture=no tests/test_ip.py
+pytest -v  tests/test_ip.py
+```
+
+for indivual test:
+
+```
+pytest -v --capture=no  tests/test_ip.py::TestIp::test_cms_ip_list
+pytest -v --capture=no  tests/test_ip.py::TestIp::test_cms_create_ip
+pytest -v --capture=no  tests/test_ip.py::TestIp::test_cms_delete_ip
+```
+
+Test the flavor
+
+```
+cms set cloud=google
+cd cloudmesh-cloud
+pytest -v --capture=no tests/cloud/test_04_flavor.py
+```
+
+for indivual test:
+
+```
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_empty_database
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_provider_flavor
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_provider_flavor_update
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_cms_flavor_refresh
+pytest -v --capture=no tests/cloud/test_04_flavor.py::Test_Flavor::test_cms_flavor
+```

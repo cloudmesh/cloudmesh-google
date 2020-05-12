@@ -14,4 +14,5 @@ pytest ${options[@]} ../cloudmesh-cloud/tests/cloud/test_04_flavor.py
 pytest ${options[@]} ../cloudmesh-cloud/tests/cloud/test_05_image.py
 pytest ${options[@]} ../cloudmesh-cloud/tests/cloud/test_07_secgroup_provider.py
 pytest ${options[@]} ../cloudmesh-cloud/tests/cloud/test_08_vm_provider.py
+pytest ${options[@]} ../cloudmesh-google/tests/test_ip.py
 pytest ${options[@]} ../cloudmesh-cloud/tests/cloud/test_09_cm_names_find.py
