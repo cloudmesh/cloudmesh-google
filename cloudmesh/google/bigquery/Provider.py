@@ -1,6 +1,5 @@
 from cloudmesh.configuration.Config import Config
 import uuid
-from botocore.exceptions import ClientError
 from cloudmesh.common.debug import VERBOSE
 from cloudmesh.mongo.DataBaseDecorator import DatabaseUpdate
 #import psycopg2
