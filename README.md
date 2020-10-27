@@ -1,12 +1,12 @@
 # Cloudmesh Google Providers
 
-[![image](https://img.shields.io/travis/TankerHQ/cloudmesh-google.svg?branch=master)](https://travis-ci.org/TankerHQ/cloudmesh-google)
+[![image](https://img.shields.io/travis/TankerHQ/cloudmesh-google.svg?branch=main)](https://travis-ci.org/TankerHQ/cloudmesh-google)
 
 [![image](https://img.shields.io/pypi/pyversions/cloudmesh-google.svg)](https://pypi.org/project/cloudmesh-google)
 
 [![image](https://img.shields.io/pypi/v/cloudmesh-google.svg)](https://pypi.org/project/cloudmesh-google/)
 
-[![image](https://img.shields.io/github/license/TankerHQ/python-cloudmesh-google.svg)](https://github.com/TankerHQ/python-cloudmesh-google/blob/master/LICENSE)
+[![image](https://img.shields.io/github/license/TankerHQ/python-cloudmesh-google.svg)](https://github.com/TankerHQ/python-cloudmesh-google/blob/main/LICENSE)
 
 see cloudmesh.google
 
