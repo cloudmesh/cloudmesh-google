@@ -43,5 +43,5 @@ then we do not have to duplicate much and can verbatim copy via make
 
 ## Refernces
 
-[cloudmesh-google]: <https://github.com/cloudmesh/cloudmesh-google> 
+* [cloudmesh-google] <https://github.com/cloudmesh/cloudmesh-google> 
 
