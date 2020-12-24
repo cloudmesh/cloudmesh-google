@@ -39,9 +39,9 @@ then we do not have to duplicate much and can verbatim copy via make
 
 ## Benchmarks
 
-[^cloudmesh-google] 
+[cloudmesh-google] 
 
 ## Refernces
 
-[^cloudmesh-google]: <https://github.com/cloudmesh/cloudmesh-google> seems not to work
+[cloudmesh-google]: <https://github.com/cloudmesh/cloudmesh-google> seems not to work
 
