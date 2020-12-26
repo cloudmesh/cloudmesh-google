@@ -44,8 +44,9 @@ class GoogleCommand(PluginCommand):
                 google config list credentials
                 google list
                 google create [--name=NAME] [--storage=SERVICE]
-                google bigquery delete
-
+                google bigquery list
+                google bigquery listtables DATASET_ID
+                google bigquery describetable DATASET_ID TABLE_ID
 
           This command does some useful things.
 
