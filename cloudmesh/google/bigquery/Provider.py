@@ -1,12 +1,9 @@
-from cloudmesh.configuration.Config import Config
-import uuid
 from cloudmesh.common.debug import VERBOSE
-from cloudmesh.mongo.DataBaseDecorator import DatabaseUpdate
-#import psycopg2
-import re
-import base64
+from cloudmesh.configuration.Config import Config
+# import psycopg2
 from google.cloud import bigquery
 from google.oauth2 import service_account
+
 
 class Provider(object):
 
@@ -14,17 +11,21 @@ class Provider(object):
         VERBOSE("initialize google big query manager")
         self.service_account_file = None
         self.project_id = None
-        #self.region = None
+        # self.region = None
         self.config = Config()
 
         print(self.service_account_file)
-        self.service_account_file = self.config['cloudmesh.cloud.google.credentials.path_to_json_file']
-        self.credentials = service_account.Credentials.from_service_account_file(self.service_account_file)
-        self.project_id = self.config['cloudmesh.cloud.google.credentials.project']
-        self.client = bigquery.Client(credentials=self.credentials, project=self.project_id )
+        self.service_account_file = self.config[
+            'cloudmesh.cloud.google.credentials.path_to_json_file']
+        self.credentials = \
+            service_account.Credentials.from_service_account_file(
+                self.service_account_file)
+        self.project_id = self.config[
+            'cloudmesh.cloud.google.credentials.project']
+        self.client = bigquery.Client(credentials=self.credentials,
+                                      project=self.project_id)
 
-        #print(self.project_id)
-
+        # print(self.project_id)
 
     def update_dict(self, d):
         d["cm"] = {
@@ -33,7 +34,6 @@ class Provider(object):
             "cloud": "google",
         }
         return d
-
 
     def update_status(self, results=None, name=None, status=None):
         return self.update_dict(
@@ -45,10 +45,10 @@ class Provider(object):
              })
 
     def listdatasets(self):
-        #List data sets within project
+        # List data sets within project
         VERBOSE("In list dataset")
         results = {}
-        #client = bigquery.Client(credentials=credentials, project=project_id)
+        # client = bigquery.Client(credentials=credentials, project=project_id)
         datasets = list(self.client.list_datasets())
         results = datasets
         project = self.client.project
@@ -59,19 +59,19 @@ class Provider(object):
         else:
             print("{} project does not contain any datasets.".format(project))
 
-
     def listtables(self, dataset_id):
         VERBOSE("In list tables")
         tables = self.client.list_tables(dataset_id)
         print("Tables contained in dataset", dataset_id)
         for table in tables:
-            print("{}.{}.{}".format(table.project, table.dataset_id, table.table_id))
+            print("{}.{}.{}".format(table.project, table.dataset_id,
+                                    table.table_id))
 
     def describetable(self, dataset_id, table_id):
         VERBOSE("In describe tables")
         table_id = self.client.project + "." + dataset_id + "." + table_id
-        #print(table_id)
-        #table = self.client.get_table(table_id)
+        # print(table_id)
+        # table = self.client.get_table(table_id)
 
         # Table description
         table = self.client.get_table(table_id)
@@ -106,14 +106,17 @@ class Provider(object):
         job_config.skip_leading_rows = 1
         job_config.autodetect = True
         with open(filename, "rb") as source_file:
-            job = self.client.load_table_from_file(source_file, table_ref, job_config=job_config)
+            job = self.client.load_table_from_file(source_file, table_ref,
+                                                   job_config=job_config)
         job.result()  # Waits for table load to complete.
-        print("Loaded {} rows into {}:{}.".format(job.output_rows, dataset_id, table_id))
+        print("Loaded {} rows into {}:{}.".format(job.output_rows, dataset_id,
+                                                  table_id))
 
-    def runsamplequery(self,dataset_id, query_id):
+    def runsamplequery(self, dataset_id, query_id):
         query_txt = query_id
+        # TODO: change line break
         # query_txt="SELECT CONCAT( 'https://stackoverflow.com/questions/', CAST(id as STRING)) as url,  view_count FROM `bigquery-public-data.stackoverflow.posts_questions` WHERE tags like '%google-bigquery%' ORDER BY view_count DESC LIMIT 10"
-        #client = bigquery.Client(credentials=credentials, project=project_id)
+        # client = bigquery.Client(credentials=credentials, project=project_id)
         query_job = self.client.query(query_txt)
         results = query_job.result()
         for row in results:

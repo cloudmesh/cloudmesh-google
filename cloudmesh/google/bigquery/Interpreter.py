@@ -4,15 +4,14 @@ from cloudmesh.google.bigquery.Provider import Provider
 class Interpreter:
 
     @staticmethod
-
     def interprete(arguments):
         googlebigquery = Provider()
-        #print(arguments)
+        # print(arguments)
         if arguments.delete:
             print(" deepak delete 12/22")
             return ""
         elif arguments.list:
-            #print("list project /dataset")
+            # print("list project /dataset")
             # googlebigquery list project_id
             # source_id = arguments.get('SOURCE')
             # project id read from yaml file if not passed
@@ -23,11 +22,11 @@ class Interpreter:
             # print(result)
             try:
                 result = googlebigquery.listdatasets()
-                #print(result)
+                # print(result)
             finally:
                 return "Unhandled error"
         elif arguments.listtables:
-            #print("listing tables 12/22")
+            # print("listing tables 12/22")
             # googlebigquery list project_id
             # source_id = arguments.get('SOURCE')
             # project_id = arguments.get('PROJECT_ID')
@@ -37,7 +36,7 @@ class Interpreter:
             # print(result)
             try:
                 result = googlebigquery.listtables(dataset_id)
-                #print(result)
+                # print(result)
             finally:
                 return "Unhandled error"
         elif arguments.describetable:
@@ -50,7 +49,7 @@ class Interpreter:
             # print(result)
             try:
                 result = googlebigquery.describetable(dataset_id, table_id)
-                #print(result)
+                # print(result)
             finally:
                 return "Unhandled error"
         else:
