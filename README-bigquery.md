@@ -10,7 +10,13 @@
 
 ## Objective
 
-Develop Cloudmesh commands to interact with Google BigQuery, a google provided cloud based datawarehouse solution
+Develop 
+
+1. Provide a survey and comparision of cloud providers and services that offer big query like features
+2. Provide a Cloudmesh API that can be used to interact with multiple cloud providerd that offer big query like features.
+1. Provide Cloudmesh command(s) to interact with multiple cloud providers that offer google big query like features.
+
+Google BigQuery is a a google provided cloud based datawarehouse solution.
 
 ## Motivation
 
@@ -38,9 +44,9 @@ data model is highly normalized and data processing is real time.
 
 Some of data warehouse solutions by major cloud providers
 
-* AWS data warehouse solution is AWS Redshift
-* Azure Synapse Analytics isn sql base data warehouse and analytics solution by Azure
-* BigQuery by Goolge is cloud based solution for data warehouse
+* AWS data warehouse solution is AWS Redshift [link missing]
+* Azure Synapse Analytics isn sql base data warehouse and analytics solution by Azure [link missing]
+* BigQuery by Goolge is cloud based solution for data warehouse [link missing]
 
 ### Cloudbased datawareouse solution comparison
 
@@ -52,7 +58,9 @@ Data warehouse solution can be compared based on some of following parameters
 * Type of supported data like structural, JSON, semi structured, unstructured
 * SQL and other support for easiness to query data
 
-## Technology
+[table with feature comparison missing]
+
+## Technology used for the implementation
 
 * Python 
 : Python libraries are used to programmatically interact with cloud and cloud hosted data warehouse
@@ -64,17 +72,9 @@ Data warehouse solution can be compared based on some of following parameters
 
 ## Installation and Setup
 
-Bigquery commands are part of cloudmesh-google so installation and setup is same as we have for cloudmesh-google.
-
-You can use pip to install cloudmesh-google.
-
-### Install via pip
-
 ```bash
-$ pip install cloudmesh-cmd5
-$ pip install cloudmesh-sys
-$ pip install cloudmesh-cloud
-$ pip install cloudmesh-google
+$ pip install cloudmesh-installer
+$ cloudmesh-installer install google
 ```
 
 ### Installing from Source
@@ -87,18 +87,24 @@ $ pip install -e .
 
 ### Google Account creation and configuration
 
-To create an google cloud account refer to [this page](https://cloudmesh.github.io/cloudmesh-manual/accounts/google/index.html) from the manual 
+To create an google cloud account refer to 
+[this page](https://cloudmesh.github.io/cloudmesh-manual/accounts/google/index.html) from the manual 
 
 To configure Cloudmesh for the Google cloud account, here are the keys to edit.
-Configuration via "~/.cloudmesh/cloudmesh.yaml"
+Configuration via `~/.cloudmesh/cloudmesh.yaml`
+
 * cloudmesh.cloud.google.credentials.project
 * cloudmesh.cloud.google.credentials.json_file
 * cloudmesh.cloud.google.credentials.datacenter
+
+[details are missing]
 
 ### Manual
 
 Google big query commands have been created using Cloudmesh and Python libraries to programmatically interact with BigQuery.
     
+[option --provider] is missing using more then google
+
 ```
         Usage:
                 google bigquery list
@@ -130,6 +136,8 @@ Some of use cases of cloud based data warehouse
 * Use scale out to support multiple queries from user for better performance
 * Able to programmatically control data warehouse based on job size and load on system
 * Able to run queries and ML models on same dataset on different clouds
+
+[use cases unclear]
 
 ## References
 
