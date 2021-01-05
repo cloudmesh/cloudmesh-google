@@ -5,7 +5,6 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 
-
 class Provider(object):
 
     def __init__(self, service='compute'):
@@ -112,7 +111,7 @@ class Provider(object):
             job = self.client.load_table_from_file(source_file, table_ref,
                                                    job_config=job_config)
         job.result()  # Waits for table load to complete.
-        print(f"Loaded {ob.output_rows} rows into {ataset_id}:{table_id}.")
+        print(f"Loaded {job.output_rows} rows into {dataset_id}:{table_id}.")
 
 
 if __name__ == "__main__":

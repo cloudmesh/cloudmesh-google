@@ -1,6 +1,7 @@
 from cloudmesh.google.bigquery.Provider import Provider
 from cloudmesh.common.console import Console
 
+
 class Interpreter:
 
     @staticmethod
