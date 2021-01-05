@@ -16,10 +16,12 @@ credentials = service_account.Credentials.from_service_account_file(
 project_id = config2['cloudmesh.cloud.google.credentials.project']
 client = bigquery.Client(credentials=credentials, project=project_id)
 
-query_txt = "SELECT " \
-            "CONCAT( 'https://stackoverflow.com/questions/', CAST(id as STRING)) as url,  view_count " \
-            "FROM `bigquery-public-data.stackoverflow.posts_questions` " \
-            "WHERE tags like '%google-bigquery%' ORDER BY view_count DESC LIMIT 10"
+query_txt = \
+    "SELECT " \
+    "CONCAT( 'https://stackoverflow.com/questions/', " \
+    "CAST(id as STRING)) as url,  view_count " \
+    "FROM `bigquery-public-data.stackoverflow.posts_questions` " \
+    "WHERE tags like '%google-bigquery%' ORDER BY view_count DESC LIMIT 10"
 # client = bigquery.Client(credentials=credentials, project=project_id)
 query_job = client.query(query_txt)
 results = query_job.result()
