@@ -53,7 +53,7 @@ class Provider(object):
         results = datasets
         project = self.client.project
         if datasets:
-            print("Datasets in project {}:".format(project))
+            print(f"Datasets in project {project}:")
             for dataset in datasets:
                 print("\t{}".format(dataset.dataset_id))
         else:
@@ -115,6 +115,18 @@ class Provider(object):
     def runsamplequery(self, dataset_id, query_id):
         query_txt = query_id
         # TODO: change line break
+        s = textwrap.dedent(
+        """
+        SELECT CONCAT( 
+            'https://stackoverflow.com/questions/', 
+            CAST(id as STRING)) as url,  
+            view_count 
+              FROM `bigquery-public-data.stackoverflow.posts_questions` 
+              WHERE tags like '%google-bigquery%' O
+              RDER BY view_count 
+              DESC LIMIT 10)
+        """.replace("\n", " ")
+
         # query_txt="SELECT CONCAT( 'https://stackoverflow.com/questions/', CAST(id as STRING)) as url,  view_count FROM `bigquery-public-data.stackoverflow.posts_questions` WHERE tags like '%google-bigquery%' ORDER BY view_count DESC LIMIT 10"
         # client = bigquery.Client(credentials=credentials, project=project_id)
         query_job = self.client.query(query_txt)
@@ -122,6 +134,12 @@ class Provider(object):
         for row in results:
             print("{} : {} views".format(row.url, row.view_count))
 
+    def query(self, query_text):
+        result = self.client.query(query_text)
+        return result
+
+    def test(self):
+        pass
 
 if __name__ == "__main__":
     print("In Provider")
