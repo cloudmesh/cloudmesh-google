@@ -93,8 +93,8 @@ class Provider(object):
         print("Table number of rows", table.num_rows)
 
     def loaddata(self, source_id, dataset_id, table_id):
-        print("Loading data")
         VERBOSE("in load data from locale")
+        print("Loading data")
         results = {}
         # client = bigquery.Client()
         filename = str(source_id)
@@ -113,7 +113,6 @@ class Provider(object):
                                                    job_config=job_config)
         job.result()  # Waits for table load to complete.
         print(f"Loaded {ob.output_rows} rows into {ataset_id}:{table_id}.")
-                                                  ))
 
 
 if __name__ == "__main__":
