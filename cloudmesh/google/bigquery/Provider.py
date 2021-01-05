@@ -5,9 +5,13 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 
+
 class Provider(object):
 
     def __init__(self, service='compute'):
+        #
+        # bug?: does this allow for multiple big tables?
+        #
         VERBOSE("initialize google big query manager")
         self.service_account_file = None
         self.project_id = None
@@ -55,7 +59,7 @@ class Provider(object):
         if datasets:
             print(f"Datasets in project {project}:")
             for dataset in datasets:
-                print("\t{}".format(dataset.dataset_id))
+                print(f"    {dataset.dataset_id}")
         else:
             print("{} project does not contain any datasets.".format(project))
 
@@ -64,12 +68,11 @@ class Provider(object):
         tables = self.client.list_tables(dataset_id)
         print("Tables contained in dataset", dataset_id)
         for table in tables:
-            print("{}.{}.{}".format(table.project, table.dataset_id,
-                                    table.table_id))
+            print(f"{table.project}.{table.dataset_id}.{table.table_id}")
 
     def describetable(self, dataset_id, table_id):
         VERBOSE("In describe tables")
-        table_id = self.client.project + "." + dataset_id + "." + table_id
+        able_id = f"{self.client.project}.{dataset_id}.{table_id}"
         # print(table_id)
         # table = self.client.get_table(table_id)
 
@@ -81,7 +84,7 @@ class Provider(object):
         print("Table number of rows: ", table.num_rows)
 
     def exportdata(self, source_id, project_id, dataset_id, table_id):
-        table_id = self.client.project + "." + dataset_id + "." + table_id
+        table_id = f"{self.client.project}.{dataset_id}.{table_id}"
         table = self.client.get_table(table_id)
         # Table description
         print("Got table", table.table_id)
@@ -109,8 +112,8 @@ class Provider(object):
             job = self.client.load_table_from_file(source_file, table_ref,
                                                    job_config=job_config)
         job.result()  # Waits for table load to complete.
-        print("Loaded {} rows into {}:{}.".format(job.output_rows, dataset_id,
-                                                  table_id))
+        print(f"Loaded {ob.output_rows} rows into {ataset_id}:{table_id}.")
+                                                  ))
 
 
 if __name__ == "__main__":
