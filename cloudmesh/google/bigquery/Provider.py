@@ -112,16 +112,6 @@ class Provider(object):
         print("Loaded {} rows into {}:{}.".format(job.output_rows, dataset_id,
                                                   table_id))
 
-    def runsamplequery(self, dataset_id, query_id):
-        query_txt = query_id
-        # TODO: change line break
-        # query_txt="SELECT CONCAT( 'https://stackoverflow.com/questions/', CAST(id as STRING)) as url,  view_count FROM `bigquery-public-data.stackoverflow.posts_questions` WHERE tags like '%google-bigquery%' ORDER BY view_count DESC LIMIT 10"
-        # client = bigquery.Client(credentials=credentials, project=project_id)
-        query_job = self.client.query(query_txt)
-        results = query_job.result()
-        for row in results:
-            print("{} : {} views".format(row.url, row.view_count))
-
 
 if __name__ == "__main__":
     print("In Provider")
