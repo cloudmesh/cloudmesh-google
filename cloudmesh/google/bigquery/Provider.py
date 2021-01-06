@@ -4,12 +4,11 @@ from cloudmesh.configuration.Config import Config
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-
 class Provider(object):
 
     def __init__(self, service='compute'):
         #
-        # bug?: does this allow for multiple big tables?
+        # bigquery commands work on single table
         #
         VERBOSE("initialize google big query manager")
         self.service_account_file = None
