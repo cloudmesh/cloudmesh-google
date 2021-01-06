@@ -8,11 +8,8 @@ class Interpreter:
     def interprete(arguments):
         googlebigquery = Provider()
         # print(arguments)
-        if arguments.delete:
-            # TODO: implememnt
-            Console.error("not implemented yet")
-            return ""
-        elif arguments.list:
+
+        if arguments.list:
             # print("list project /dataset")
             # googlebigquery list project_id
             # source_id = arguments.get('SOURCE')
