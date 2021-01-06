@@ -1,4 +1,5 @@
 from cloudmesh.google.bigquery.Provider import Provider
+from cloudmesh.common.console import Console
 
 
 class Interpreter:
@@ -8,7 +9,8 @@ class Interpreter:
         googlebigquery = Provider()
         # print(arguments)
         if arguments.delete:
-            print(" deepak delete 12/22")
+            # TODO: implememnt
+            Console.error("not implemented yet")
             return ""
         elif arguments.list:
             # print("list project /dataset")
@@ -25,6 +27,7 @@ class Interpreter:
                 # print(result)
             finally:
                 return "Unhandled error"
+                # Why not Console.error or raise
         elif arguments.listtables:
             # print("listing tables 12/22")
             # googlebigquery list project_id
@@ -39,6 +42,8 @@ class Interpreter:
                 # print(result)
             finally:
                 return "Unhandled error"
+                # Why not Console.error or raise
+
         elif arguments.describetable:
             # googlebigquery list project_id
             # source_id = arguments.get('SOURCE')
@@ -52,5 +57,8 @@ class Interpreter:
                 # print(result)
             finally:
                 return "Unhandled error"
+                # Why not Console.error or raise
+
         else:
             print("Unhandled error")
+            # Why not Console.error or raise

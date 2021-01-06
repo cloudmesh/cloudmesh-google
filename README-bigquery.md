@@ -44,10 +44,9 @@ data model is highly normalized and data processing is real time.
 
 Some of data warehouse solutions by major cloud providers
 
-* AWS data warehouse solution is AWS Redshift (https://aws.amazon.com/redshift/)
-* Azure Synapse Analytics isn sql base data warehouse and analytics solution by Azure (https://azure.microsoft.com/en-us/services/synapse-analytics/)
-* BigQuery by Google is cloud based solution for data warehouse (https://cloud.google.com/bigquery)
-* Snowflake by Snowflake computing based on SQL. Snowflake use other public cloud like AWS or GCP for their solution (https://www.snowflake.com/)
+* AWS data warehouse solution is AWS Redshift [link missing]
+* Azure Synapse Analytics isn sql base data warehouse and analytics solution by Azure [link missing]
+* BigQuery by Goolge is cloud based solution for data warehouse [link missing]
 
 ### Cloudbased datawareouse solution comparison
 
@@ -59,14 +58,7 @@ Data warehouse solution can be compared based on some of following parameters
 * Type of supported data like structural, JSON, semi structured, unstructured
 * SQL and other support for easiness to query data
 
-|                                  	| Big Query                                                                                	| AWS redshift                                                                                                           	| Snowflake                                                                                                                	|
-|----------------------------------	|------------------------------------------------------------------------------------------	|------------------------------------------------------------------------------------------------------------------------	|--------------------------------------------------------------------------------------------------------------------------	|
-| Storage   and compute            	| Separate data storage,   processing and compute                                          	| Combined storage and compute                                                                                           	| separate compute and storage                                                                                             	|
-| Scalability                      	| Automatic provision of compute   resource based o load.                                  	| Local scale. Can not be scaled   independently. Need to reconfigure cluster and restart it to scale.                   	| Separate metadata, compute and   storage. Compute and storage can be independently scaled   horizontally/vertically      	|
-| Security                         	| Highly secure, encrypt all data   in rest or in transit                                  	| High security. Addition to DB   security, there is other security features like SSL connection, sign-in   credentials  	| Fair and as per industry   standards. Options of security is available and it impact on costing..                        	|
-| SQl   capability                 	| ANSI 2011 SQL standards. Support   for XML and JSON. Can be improved for complex queries 	| Limited SQL capabilities for   example , it does not support constraints, index, partitions                            	| Support JSOn, XML, AVRO, Parquet   data types. Standard and extended sql support. Limited performance tunning   options. 	|
-| Maintenance   and operationalize 	| Low maintenance, backend support   and configuration is handled by google.               	| Complex to integrate. Need   customer time for maintenance like    updates                                             	| Zero management from end   customer.                                                                                     	|
-
+[table with feature comparison missing]
 
 ## Technology used for the implementation
 
@@ -101,14 +93,17 @@ To create an google cloud account refer to
 To configure Cloudmesh for the Google cloud account, here are the keys to edit.
 Configuration via `~/.cloudmesh/cloudmesh.yaml`
 
-* cloudmesh.cloud.google.credentials.project - project name which has been created on google cloud (https://cloud.google.com/resource-manager/docs/creating-managing-projects) 
-* cloudmesh.cloud.google.credentials.json_file - json file generated from google for authentication (https://cloud.google.com/docs/authentication/getting-started)
-* cloudmesh.cloud.google.credentials.datacenter - Google region which is used to setup your account.
+* cloudmesh.cloud.google.credentials.project
+* cloudmesh.cloud.google.credentials.json_file
+* cloudmesh.cloud.google.credentials.datacenter
 
+[details are missing]
 
 ### Manual
 
 Google big query commands have been created using Cloudmesh and Python libraries to programmatically interact with BigQuery.
+    
+[option --provider] is missing using more then google
 
 ```
         Usage:
@@ -137,13 +132,15 @@ Google big query commands have been created using Cloudmesh and Python libraries
 
 Some of use cases of cloud based data warehouse
 
-* Programmatically scale up or scale horizontal for better query performance
-* Use scale out to support concurrent queries on datawarehouse to increase throughput
-* Able to run queries and ML models on same dataset on different clouds provided solution
+* Use cloud scale up to run heavy data load job 
+* Use scale out to support multiple queries from user for better performance
+* Able to programmatically control data warehouse based on job size and load on system
+* Able to run queries and ML models on same dataset on different clouds
+
+[use cases unclear]
 
 ## References
 
 * <https://docs.microsoft.com/en-us/azure/sql-data-warehouse/>
 * <https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html>
 * <https://cloud.google.com/BigQuery/docs/>
-* <https://docs.snowflake.com/en/user-guide/intro-supported-features.html>
