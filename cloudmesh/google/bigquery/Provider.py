@@ -16,7 +16,7 @@ class Provider(object):
 
         print(self.service_account_file)
         self.service_account_file = self.config[
-            'cloudmesh.cloud.google.credentials.path_to_json_file']
+            'cloudmesh.cloud.google.credentials.json_file']
         self.credentials = \
             service_account.Credentials.from_service_account_file(
                 self.service_account_file)
