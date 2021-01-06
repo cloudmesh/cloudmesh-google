@@ -11,8 +11,7 @@ class Interpreter:
 
         if arguments.list:
             # print("list project /dataset")
-            # googlebigquery list project_id
-            # source_id = arguments.get('SOURCE')
+
             # project id read from yaml file if not passed
             project_id = arguments.get('PROJECT_ID')
             # dataset_id = arguments.get('DATASET_ID')
