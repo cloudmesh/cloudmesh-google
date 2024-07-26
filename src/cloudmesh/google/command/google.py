@@ -3,12 +3,12 @@ from cloudmesh.common.console import Console
 from cloudmesh.common.debug import VERBOSE
 from cloudmesh.common.parameter import Parameter
 from cloudmesh.common.util import banner
-from cloudmesh.common.util import path_expand
+#from cloudmesh.common.util import path_expand
 from cloudmesh.common.variables import Variables
 from cloudmesh.shell.command import PluginCommand
 from cloudmesh.shell.command import command
-from cloudmesh.shell.command import map_parameters
-
+#from cloudmesh.shell.command import map_parameters
+from pprint import pprint
 
 class GoogleCommand(PluginCommand):
     # noinspection PyUnusedLocal
@@ -18,52 +18,39 @@ class GoogleCommand(PluginCommand):
         ::
 
           Usage:
-                google --file=FILE
-                google list
-                google [--parameter=PARAMETER] [--experiment=EXPERIMENT] [COMMAND...]
-
+                google ls DIR [--csv] [--c=CHAR]
+                google info DIR [--json|--yaml]
+                
           This command does some useful things.
 
           Arguments:
-              FILE   a file name
-              PARAMETER  a parameterized parameter of the form "a[0-3],a5"
-
+              DIR   the directory in google
+              CHAR  the character to be used for csv separation [default: ,]
+              
           Options:
               -f      specify the file
 
           Description:
 
-            > cms google --parameter="a[1-2,5],a10"
-            >    example on how to use Parameter.expand. See source code at
-            >      https://github.com/cloudmesh/cloudmesh-google/blob/main/cloudmesh/google/command/google.py
-            >    prints the expanded parameter as a list
-            >    ['a1', 'a2', 'a3', 'a4', 'a5', 'a10']
-
-            > google exp --experiment=a=b,c=d
-            > example on how to use Parameter.arguments_to_dict. See source code at
-            >      https://github.com/cloudmesh/cloudmesh-google/blob/main/cloudmesh/google/command/google.py
-            > prints the parameter as dict
-            >   {'a': 'b', 'c': 'd'}
-
+            > cms google ls DIR 
+            > lists the files in the DIR
+            
         """
-
-        # arguments.FILE = arguments['--file'] or None
-
-        # switch debug on
 
         variables = Variables()
         variables["debug"] = True
 
-        banner("original arguments", color="RED")
+        arguments["json"] = arguments["--json"]
+        arguments["yaml"] = arguments["--yaml"]
+        arguments["csv"] = arguments["--csv"]
+        arguments["c"] = arguments["--c"] or ","
 
-        VERBOSE(arguments)
-
-        banner(
-            "rewriting arguments so we can use . notation for file, parameter, and experiment",
-            color="RED",
-        )
-
-        map_parameters(arguments, "file", "parameter", "experiment")
+        if arguments.yaml:
+            kind = "yaml"
+        else:
+            kind = "json"
+            
+        #map_parameters(arguments, "--json", "--yaml")
 
         VERBOSE(arguments)
 
@@ -72,38 +59,25 @@ class GoogleCommand(PluginCommand):
             color="RED",
         )
 
-        arguments = Parameter.parse(
-            arguments, parameter="expand", experiment="dict", COMMAND="str"
-        )
+        # arguments = Parameter.parse(
+        #     arguments, parameter="expand", experiment="dict", COMMAND="str"
+        # )
 
-        VERBOSE(arguments)
+        # VERBOSE(arguments)
 
         banner("showcasing tom simple if parsing based on teh dotdict", color="RED")
 
         m = Google()
 
-        #
-        # It is important to keep the programming here to a minimum and any substantial programming ought
-        # to be conducted in a separate class outside the command parameter manipulation. If between the
-        # elif statement you have more than 10 lines, you may consider putting it in a class that you import
-        # here and have proper methods in that class to handle the functionality. See the Manager class for
-        # an example.
-        #
+        if arguments.ls:
+            r = m.list(arguments.DIR, csv=arguments.csv, c=arguments.c)
+            print (r)
 
-        if arguments.file:
-            print("option a")
-            m.list(path_expand(arguments.file))
-
-        elif arguments.list:
-            print("option b")
-            m.list("just calling list without parameter")
-
-        Console.error("This is just a sample of an error")
-        Console.warning("This is just a sample of a warning")
-        Console.info("This is just a sample of an info")
-
-        Console.info(
-            " You can witch debugging on and off with 'cms debug on' or 'cms debug off'"
-        )
+        elif arguments.info:
+            r = m.info(arguments.DIR, kind=kind)
+            if kind == "json":
+                pprint(r)
+            else:
+                print (r)
 
         return ""
