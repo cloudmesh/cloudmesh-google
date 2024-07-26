@@ -1,0 +1,5 @@
+
+bumpversion:
+- VERSION
+- src/cloudmesh/google/__version__.py
+- src/cloudmesh/google/__init__.py
