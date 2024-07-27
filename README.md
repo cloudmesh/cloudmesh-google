@@ -38,6 +38,23 @@ You can cd into that command and install it with
     make local
 
 
+## Using on 
+
+rclone config
+
+
+create cache:
+
+```
+cms google info 'drive:DSCPub/' --cache=cache.json --refresh --R
+```
+
+replace all http://infomall with https://infomall
+
+```
+ms google replace --prefix="https://infomall.org" --cache=cache.json index.html > index-google.html
+```
+
 ## Manual Page
 
 <!-- START-MANUAL -->
