@@ -3,6 +3,8 @@ from cloudmesh.common.console import Console
 import json
 from pprint import pprint
 import yaml
+import os
+from cloudmesh.common.util import readfile
 
 class Google:
     """
@@ -27,6 +29,15 @@ class Google:
         Your Name
     """
 
+    def url(self, id):
+        return f"https://drive.google.com/file/d/{id}/view"
+    
+    def download(self, id, filename):
+        return f"rclone copy 'drive:{id}' {filename}"
+    
+    def html_link(self, id, filename):
+        return f'<a href="{self.url(id)}"><!-- {filename} -->'
+
     def __init__(self):
         """
         Initialize the Google class.
@@ -39,9 +50,9 @@ class Google:
         Returns:
             None
         """
-        pass
-
-    def list(self, directory, csv=False, c=","):    
+        self.cache = None
+        
+    def list(self, directory, format="csv", c=",", recursive=False):    
         """
         Perform a list operation.
 
@@ -73,17 +84,30 @@ class Google:
                 path = item['Path']
                 size = item['Size']
                 id = item['ID']
-                if csv:
-                    output += f"{path}{c}{size}{c}{id}\n"
-                else:
+                url = self.url(id)
+                if format == "csv":
+                    output += f"{path}{c}{size}{c}{id}{c}{url}\n"
+                elif format == "list":
                     output += f"{path.ljust(len_path)}  {str(size).ljust(len_size)} {id.ljust(len_id)}\n"
+                elif format == "html":
+                    output += self.html_link(id, path) + "\n"
                 
             except:
                 Console.error (f"error in entry {item}")         
         return output
 
+    def read_cache(self, cache):
+        with open(cache, 'r') as file:
+            data = json.loads(file.read())
+        return data
+    
+    def dump_cache(self, cache, data):
+        with open(cache, 'w') as file:
+            return json.dump(data, file, indent=2)
 
-    def info(self, directory, kind="yaml"): 
+
+
+    def info(self, directory, kind="yaml", cache=None, refresh=False, recursive=False): 
         """
         Perform a list operation.
 
@@ -95,28 +119,81 @@ class Google:
         Returns:
             None
         """
-        print("list", directory, kind)
+        def get_data():
+            try:
+                if recursive:
+                    recursive_flag = "-R"
+                else:
+                    recursive_flag = ""
+                r = Shell.run(f"rclone {recursive_flag} --drive-shared-with-me lsjson '{directory}'")
+            except Exception as e:
+                print()
+                Console.error(f"Directory '{directory}' not found.")
+                print()
+                return ""
+            print (r)
+            data = json.loads(r)
+        
+            if kind == "yaml":
+                output = yaml.dump(data, default_flow_style=False)
+                data = output
+            else:
+                pass
+            return data
+
 
         if directory.startswith("drive:"):
             pass
         else:
             directory = f"drive:{directory}"
 
-        try:
-            r = Shell.run(f"rclone --drive-shared-with-me lsjson '{directory}'")
-        except Exception as e:
-            print()
-            Console.error(f"Directory '{directory}' not found.")
-            print()
-            return ""
-        print (r)
-        data = json.loads(r)
-    
-        if kind == "yaml":
-            output = yaml.dump(data, default_flow_style=False)
-            data = output
-        else:
-            pass
+        if cache is not None:
+            refresh = not os.path.exists(cache) or refresh
+        if cache is not None and refresh:
+            data = get_data()
+            self.dump_cache(cache, data)
+        elif cache is not None and not refresh:
+            data = self.read_cache(cache)
+        elif cache is None:
+            data = get_data()
+
         return data
+
+    def sanitize(self, name):
+        return name.replace(" ", "%20").replace(",", "%2C")
+    
+    def replace(self, cache, prefix, file, verbose=False):
+        data = self.read_cache(cache)
+        for entry in data:
+            path = self.sanitize(entry["Path"])
+            name = self.sanitize(entry["Name"])
+            
+            entry["source"] = '<a href="' + prefix + "/" + path +'">'
+            entry["target"] = self.html_link(entry["ID"], name)
+
+        with open("replace.json", "w") as f:
+             json.dump(data, f, indent=4)
         
+        content = readfile(file)
+        
+        for entry in data:
+            source = entry["source"]
+            target = entry["target"]
+
+            if verbose:
+                if source in content:
+                    print (source, "->", target)
+            content = content.replace(source, target)
+
+
+        print (content)  
+
+
+        #pprint(data)
+
+
+        
+        #for line in lines:     
+        #    print(line)
+        return ""
 
